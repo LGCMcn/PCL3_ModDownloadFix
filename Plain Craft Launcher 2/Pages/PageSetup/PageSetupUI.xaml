@@ -6,7 +6,7 @@
     PanScroll="PanBack">
     <local:MyScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
         <StackPanel x:Name="PanMain" Margin="25,10">
-            <local:MyCard Margin="0,15" Title="基础" x:Name="CardLauncher">
+            <local:MyCard Margin="0,15" Title="基础（第三方免费个性化）" x:Name="CardLauncher">
                 <Grid Margin="25,40,25,17">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
@@ -53,48 +53,48 @@
                                 <RowDefinition />
                             </Grid.RowDefinitions>
                             <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="主题" Margin="0,0,20,0" />
-                            <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="隐藏主题" Margin="0,0,20,0" Grid.Row="1" />
+                            <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="更多配色" Margin="0,0,20,0" Grid.Row="1" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="0" 
-                                              Grid.Column="1" Grid.Row="0" Text="龙猫蓝" x:Name="RadioLauncherTheme0" />
+                                              Grid.Column="1" Grid.Row="0" Text="经典蓝" x:Name="RadioLauncherTheme0" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="1" 
-                                              Grid.Column="2" Grid.Row="0" Text="甜柠青" x:Name="RadioLauncherTheme1" />
+                                              Grid.Column="2" Grid.Row="0" Text="湖水青" x:Name="RadioLauncherTheme1" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="2" 
-                                              Grid.Column="3" Grid.Row="0" Text="小草绿" x:Name="RadioLauncherTheme2" />
+                                              Grid.Column="3" Grid.Row="0" Text="竹叶绿" x:Name="RadioLauncherTheme2" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="3" 
-                                              Grid.Column="4" Grid.Row="0" Text="菠萝黄" x:Name="RadioLauncherTheme3" />
+                                              Grid.Column="4" Grid.Row="0" Text="暖阳黄" x:Name="RadioLauncherTheme3" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="4" 
-                                              Grid.Column="5" Grid.Row="0" Text="橡木棕" x:Name="RadioLauncherTheme4" />
+                                              Grid.Column="5" Grid.Row="0" Text="榛果棕" x:Name="RadioLauncherTheme4" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="5" 
-                                              Grid.Column="1" Grid.Row="1" Text="玄素黑" x:Name="RadioLauncherTheme5" Opacity="0" ToolTip="灰色是个谎言" />
-                            <local:MyRadioBox Grid.Column="1" Grid.Row="1" Text="玄素黑" x:Name="RadioLauncherTheme5Gray" IsEnabled="False" Opacity="1" />
-                            <TextBlock Grid.Column="1" Grid.Row="1" x:Name="LabLauncherTheme5Unlock" Background="{StaticResource ColorBrushSemiTransparent}" ToolTip="灰色是个谎言" />
+                                              Grid.Column="1" Grid.Row="1" Text="薄雾灰" x:Name="RadioLauncherTheme5" Opacity="1" />
+                            <local:MyRadioBox Grid.Column="1" Grid.Row="1" Text="薄雾灰" x:Name="RadioLauncherTheme5Gray" IsEnabled="False" Visibility="Collapsed" Opacity="0" />
+                            <TextBlock Grid.Column="1" Grid.Row="1" x:Name="LabLauncherTheme5Unlock" Visibility="Collapsed" IsHitTestVisible="False" Background="{StaticResource ColorBrushSemiTransparent}" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="12" 
-                                              Grid.Column="2" Grid.Row="1" Text="滑稽彩" x:Name="RadioLauncherTheme12" IsEnabled="False" ToolTip="滑稽树上滑稽果，滑稽树下你和我，滑稽之日搞事情，欢乐多又多" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="2" Grid.Row="1" Text="极光渐变" x:Name="RadioLauncherTheme12" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="6" 
-                                              Grid.Column="3" Grid.Row="1" Text="铁杆粉" x:Name="RadioLauncherTheme6" IsEnabled="False" ToolTip="99 次重逢的喜悦" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="3" Grid.Row="1" Text="樱花粉" x:Name="RadioLauncherTheme6" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="7" 
-                                              Grid.Column="4" Grid.Row="1" Text="神秘紫" x:Name="RadioLauncherTheme7" IsEnabled="False" ToolTip="072 101 108 112 032 068 101 118 032 048 046 052 046 052" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="4" Grid.Row="1" Text="薰衣紫" x:Name="RadioLauncherTheme7" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="13" 
-                                              Grid.Column="5" Grid.Row="1" Text="欧皇彩" x:Name="RadioLauncherTheme13" IsEnabled="False" ToolTip="这就是传说中的欧皇了吧" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="5" Grid.Row="1" Text="落日渐变" x:Name="RadioLauncherTheme13" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="8" 
-                                              Grid.Column="1" Grid.Row="2" Text="秋仪金" x:Name="RadioLauncherTheme8" IsEnabled="False" />
-                            <TextBlock Grid.Column="1" Grid.Row="2" x:Name="LabLauncherTheme8Copy" Background="{StaticResource ColorBrushSemiTransparent}" />
+                                              Grid.Column="1" Grid.Row="2" Text="琥珀金" x:Name="RadioLauncherTheme8" IsEnabled="True" />
+                            <TextBlock Grid.Column="1" Grid.Row="2" x:Name="LabLauncherTheme8Copy" Visibility="Collapsed" IsHitTestVisible="False" Background="{StaticResource ColorBrushSemiTransparent}" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="9" 
-                                              Grid.Column="2" Grid.Row="2" Text="活跃橙" x:Name="RadioLauncherTheme9" IsEnabled="False" />
-                            <TextBlock Grid.Column="2" Grid.Row="2" x:Name="LabLauncherTheme9Copy" Background="{StaticResource ColorBrushSemiTransparent}" />
+                                              Grid.Column="2" Grid.Row="2" Text="蜜橘橙" x:Name="RadioLauncherTheme9" IsEnabled="True" />
+                            <TextBlock Grid.Column="2" Grid.Row="2" x:Name="LabLauncherTheme9Copy" Visibility="Collapsed" IsHitTestVisible="False" Background="{StaticResource ColorBrushSemiTransparent}" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="10" 
-                                              Grid.Column="3" Grid.Row="2" Text="跳票红" x:Name="RadioLauncherTheme10" IsEnabled="False" ToolTip="进行一次正版登录，支持正版游戏！" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="3" Grid.Row="2" Text="珊瑚红" x:Name="RadioLauncherTheme10" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="11" 
-                                              Grid.Column="4" Grid.Row="2" Text="极客蓝" x:Name="RadioLauncherTheme11" IsEnabled="False" ToolTip="右键打开解密游戏入口" />
-                            <TextBlock Grid.Column="4" Grid.Row="2" x:Name="LabLauncherTheme11Click" Background="{StaticResource ColorBrushSemiTransparent}" />
+                                              Grid.Column="4" Grid.Row="2" Text="深海蓝" x:Name="RadioLauncherTheme11" IsEnabled="True" />
+                            <TextBlock Grid.Column="4" Grid.Row="2" x:Name="LabLauncherTheme11Click" Visibility="Collapsed" IsHitTestVisible="False" Background="{StaticResource ColorBrushSemiTransparent}" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="14" 
-                                              Grid.Column="5" Grid.Row="2" Text="自定义" x:Name="RadioLauncherTheme14" IsEnabled="False" ToolTip="需要解锁五个隐藏主题" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="5" Grid.Row="2" Text="自由配色" x:Name="RadioLauncherTheme14" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                         </Grid>
                         <local:MyCheckBox local:SettingService.Key="UiLauncherLogo" Text="打开启动器时显示 PCL 图标" Margin="-1,0,0,1" Height="22" />
                     </StackPanel>
                     <Border Background="#DDDDDDDD" Margin="-8,23,-5,28" CornerRadius="4" Name="PanLauncherHide" Visibility="Collapsed">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="如果可以小小赞助一下 PCL，就能解锁主题颜色更换功能啦……&#xa;多亏了大家的支持，PCL 才能在免费、无任何广告的情况下维持数年的更新（磕头）！" FontSize="13" Margin="0,0,0,0" />
+                            <TextBlock Text="LGCMcn 第三方免费配色，无需赞助码；不代表 PCL 官方赞助身份或官方主题授权。" FontSize="13" Margin="0,0,0,0" />
                             <local:MyButton Height="32" MinWidth="140" Text="支持 PCL 开发！" Padding="13,0" HorizontalAlignment="Center" Margin="0,9,0,0" ColorType="Highlight"
                                             local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://meloong.com/afd/a/LTCat" />
                         </StackPanel>

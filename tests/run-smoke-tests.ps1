@@ -13,7 +13,7 @@ Copy-Item (Join-Path $output '*.dll') $testRoot
 Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\Resources\Newtonsoft.Json.dll') $testRoot
 Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\App.config') (Join-Path $testRoot 'SmokeTests.exe.config')
 $wpfRefs = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\WPF'
-& $compiler /nologo "/out:$testRoot\SmokeTests.exe" "/r:$testRoot\Newtonsoft.Json.dll" /r:System.Net.Http.dll "/r:$wpfRefs\PresentationFramework.dll" "/r:$wpfRefs\WindowsBase.dll" (Join-Path $PSScriptRoot 'SmokeTests.cs')
+& $compiler /nologo "/out:$testRoot\SmokeTests.exe" "/r:$testRoot\Newtonsoft.Json.dll" /r:System.Net.Http.dll "/r:$wpfRefs\PresentationFramework.dll" "/r:$wpfRefs\PresentationCore.dll" "/r:$wpfRefs\WindowsBase.dll" (Join-Path $PSScriptRoot 'SmokeTests.cs')
 if ($LASTEXITCODE -ne 0) { throw '测试程序编译失败。' }
 
 # 测试进程只接收合成配置，避免意外读取 CI 或本机的真实个人凭据。
@@ -26,6 +26,8 @@ try {
     if ($Network) { $arguments += '--network' }
     & (Join-Path $testRoot 'SmokeTests.exe') @arguments
     if ($LASTEXITCODE -ne 0) { throw '默认配置或网络检查失败。' }
+    & (Join-Path $testRoot 'SmokeTests.exe') --personalization
+    if ($LASTEXITCODE -ne 0) { throw '第三方个性化检查失败。' }
     @{
         MicrosoftClientId = 'local-test-client-id'
         CurseForgeApiKey = 'local-test-key'

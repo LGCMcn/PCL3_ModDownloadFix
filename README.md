@@ -10,7 +10,7 @@
 
 前往 [最新 Release](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest)，下载 **`PCL.DownloadFix.Windows-x64.zip`**，完整解压后运行其中的 EXE。请保留旁边的 `.exe.config`、JSON 配置及“组件”文件夹。
 
-**新手／小白下载加速：** [我的世界 PCL3 Download 修复 · NAS 下载入口](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce)。这是 LGCMcn 提供的 NAS 备用下载，分享内容与 GitHub 已发布版本一致，主要为了帮助新手更方便地获取文件，并为 GitHub 下载缓慢的用户提供加速下载选择。GitHub 访问不便时，可以尝试这个入口。
+**新手／小白下载加速：** [我的世界 PCL3 Download 修复 · NAS 下载入口](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce)。这是 LGCMcn 提供的 NAS 备用下载，主要帮助新手方便下载，为 GitHub 下载缓慢的用户提供备用选择。NAS 由维护者手动同步，可能晚于 GitHub；本次新版请以 GitHub Release 为准，下载后可使用同一 Release 的 `SHA256SUMS.txt` 核对版本与文件。
 
 - 系统：64 位 Windows，.NET Framework 4.8。
 - `PCL.DownloadFix.Source.zip` 是包含固定版本 MeloongCore 的完整源码包。
@@ -18,6 +18,7 @@
 
 ## 本次修改
 
+- 新增 14 个第三方独立免费配色预设和自由配色；色相、饱和度、亮度与渐变可直接调整，无需赞助码。
 - 恢复 Minecraft 下载、整合包安装等原本受限制的入口，保留官方源和 BMCLAPI 切换。
 - Modrinth 默认使用官方 API；支持自行配置 CurseForge API Key 和兼容镜像。
 - 新增 `PCL.Services.json` 本地配置，支持微软 Client ID、CurseForge Key 和服务地址；不在源码或构建中嵌入个人凭据。
@@ -27,11 +28,11 @@
 
 ## 使用前需要知道
 
-**本版本不保证与 PCL 官方正式版所有功能完全一致。** 公开源码缺少的官方私有赞助功能和原自动更新没有重建。
+**本版本不保证与 PCL 官方正式版所有功能完全一致。** 免费配色为第三方独立实现，官方赞助等级保持 None；未重建官方私有特效、赞助权益或原自动更新。
 
 微软正版登录需要自己的、具备相关权限的公共客户端应用 Client ID。CurseForge 官方接口和文件下载需要自己的 API Key；原 MCIM 镜像在本次验证中已返回停服提示，因此最终版默认不使用该镜像。没有 Key 时可使用 Modrinth 来源。
 
-34 项程序检查通过，验证了 Modrinth 搜索、启动器自身下载引擎下载 Mod 和 Minecraft 客户端文件，以及大小和 SHA1 校验。界面启动与 EasyTier 本机两个节点连接也通过验证。完整游戏启动、全部加载器安装和跨电脑公网联机尚未完成验收。
+本次构建通过 **72 项检查**，其中 43 项覆盖免费配色、设置刷新及真实 WPF 控件。先前下载修复发布版的 34 项检查验证了 Modrinth 搜索、启动器自身下载引擎下载 Mod 和 Minecraft 客户端文件，以及大小和 SHA1 校验。界面启动与 EasyTier 本机两个节点连接也通过验证。完整游戏启动、全部加载器安装和跨电脑公网联机尚未完成验收。
 
 配置步骤、服务状态和验证边界：
 

@@ -31,7 +31,7 @@ class SmokeTests {
     [STAThread] static int Main(string[] args) {
         try {
             app=Assembly.LoadFrom(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"Plain Craft Launcher 2.exe"));
-            new System.Windows.Application();
+            var application=(System.Windows.Application)Activator.CreateInstance(app.GetType("PCL.Application"),true);
             var resource=app.GetManifestResourceNames().Single(n=>n.EndsWith("Resources.resources"));
             var manager=new ResourceManager(resource.Substring(0,resource.Length-10),app);
             AppDomain.CurrentDomain.AssemblyResolve += (s,e) => {
@@ -45,6 +45,11 @@ class SmokeTests {
             core.GetType("MeloongCore.Main").GetMethod("Init").Invoke(null,new object[]{"PCLDownloadFixTest"});
             var wpf=Assembly.Load("MeloongCore.Wpf");
             wpf.GetType("MeloongCore.Wpf.Main").GetMethod("Init").Invoke(null,null);
+            if(args.Contains("--personalization")) {
+                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                Personalization();
+                Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
+            }
             if(args.Contains("--custom-config")) { CustomConfig(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0); }
             if(args.Contains("--invalid-config")) {
                 try {Call("ModServices","ServiceValue","MicrosoftClientId","",null); throw new Exception("invalid config accepted");}
@@ -88,6 +93,49 @@ class SmokeTests {
             Console.WriteLine("RESULT: "+passed+" passed");
             Environment.Exit(0); return 0;
         } catch(Exception e) { Console.Error.WriteLine(e); Environment.Exit(1); return 1; }
+    }
+    static int PaletteField(object palette,string name) {return (int)palette.GetType().GetField(name).GetValue(palette);}
+    static void Personalization() {
+        for(int id=0;id<=14;id++) {
+            var palette=Call("ModPersonalization","GetPersonalizationPalette",id);
+            Check(PaletteField(palette,"Hue")>=0 && PaletteField(palette,"Hue")<360 && PaletteField(palette,"Saturation")>=0 && PaletteField(palette,"Saturation")<=100,"valid independent palette "+id);
+        }
+        var custom=Call("ModPersonalization","GetPersonalizationPalette",14,359,91,35,60);
+        Check(PaletteField(custom,"Hue")==359 && PaletteField(custom,"Saturation")==91 && PaletteField(custom,"LightAdjust")==15 && PaletteField(custom,"Gradient")==-30,"custom controls map to palette values");
+        var limits=Call("ModPersonalization","GetPersonalizationPalette",14,999,-5,99,999);
+        Check(PaletteField(limits,"Hue")==0 && PaletteField(limits,"Saturation")==0 && PaletteField(limits,"LightAdjust")==20 && PaletteField(limits,"Gradient")==90,"custom values are clamped");
+        Check(PaletteField(Call("ModPersonalization","GetPersonalizationPalette",14),"Gradient")==0,"default gradient slider is centered at zero");
+        Check(PaletteField(Call("ModPersonalization","GetPersonalizationPalette",-1),"Hue")==210,"unknown palette falls back to blue");
+        Check(Convert.ToInt32(app.GetType("PCL.ModSecret").GetProperty("CurrentRank").GetValue(null))==0,"official sponsor identity remains None");
+        Call("Settings","Set","UiLauncherTheme",14);
+        Call("Settings","Set","UiLauncherHue",312);
+        Call("Settings","Set","UiLauncherSat",70);
+        Call("Settings","Set","UiLauncherLight",25);
+        Call("Settings","Set","UiLauncherDelta",30);
+        Call("ModSecret","ThemeRefresh");
+        var secret=app.GetType("PCL.ModSecret");
+        Check((int)secret.GetField("ColorHue").GetValue(null)==312 && (int)secret.GetField("ColorLightAdjust").GetValue(null)==5,"saved custom settings refresh runtime palette");
+        Check(System.Windows.Application.Current.Resources["ColorBrush3"] is System.Windows.Media.SolidColorBrush,"theme writes actual WPF color resources");
+        var page=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.PageSetupUI"));
+        Call("ModPersonalization","ApplyPersonalizationControls",page);
+        for(int id=0;id<=14;id++) {
+            var control=(System.Windows.UIElement)page.FindName("RadioLauncherTheme"+id);
+            Check(control!=null && control.IsEnabled && control.Opacity==1,"preset is selectable without sponsor code "+id);
+        }
+        Check(((System.Windows.UIElement)page.FindName("PanLauncherHide")).Visibility==System.Windows.Visibility.Collapsed,"sponsor overlay does not block third-party controls");
+        foreach(string name in new[]{"LabLauncherTheme5Unlock","LabLauncherTheme8Copy","LabLauncherTheme9Copy","LabLauncherTheme11Click"})
+            Check(((System.Windows.UIElement)page.FindName(name)).Visibility==System.Windows.Visibility.Collapsed,"legacy overlay hidden: "+name);
+        Call("SettingService","RefreshSettings",page);
+        page.Measure(new System.Windows.Size(950,780));
+        page.Arrange(new System.Windows.Rect(0,0,950,780));
+        page.UpdateLayout();
+        var image=new System.Windows.Media.Imaging.RenderTargetBitmap(950,780,96,96,System.Windows.Media.PixelFormats.Pbgra32);
+        image.Render(page);
+        var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
+        using(var preview=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"personalization-preview.png"))) encoder.Save(preview);
+        Call("Settings","Set","UiLauncherTheme",0);
+        Check((int)secret.GetField("ColorHue").GetValue(null)==210,"switching back to default resets hue");
     }
     static void CustomConfig() {
         Check((string)Call("ModServices","ResolveServiceUrl","https://bmclapi2.bangbang93.com/maven/a.jar?x=1")=="https://bmcl.example.test/base/maven/a.jar?x=1","custom BMCL endpoint preserves path");

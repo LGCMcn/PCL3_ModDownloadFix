@@ -3,7 +3,7 @@ Public Class PageSetupUI
     Private Sub PageSetupUI_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
         '重复加载部分
         PanBack.ScrollToHome()
-        ThemeCheckAll(True)
+        ApplyPersonalizationControls(Me)
         If ThemeDontClick <> 0 Then
             Dim NewText As String = Nothing
             Select Case ThemeDontClick
@@ -28,14 +28,7 @@ Public Class PageSetupUI
 
         SliderLoad()
 
-        If BuildType = BuildTypes.Release Then PanLauncherHide.Visibility = Visibility.Visible
-
-        '设置解锁
-        If Not RadioLauncherTheme8.IsEnabled Then LabLauncherTheme8Copy.ToolTip = $"累积赞助达到 ¥23.33 后，在爱发电私信发送【土豆 {Identify}】以解锁。" & vbCrLf & "右键打开赞助页面，如果觉得 PCL 做得还不错就支持一下吧 =w=！"
-        RadioLauncherTheme8.ToolTip = $"累积赞助达到 ¥23.33 后，在爱发电私信发送【土豆 {Identify}】以解锁"
-        If Not RadioLauncherTheme9.IsEnabled Then LabLauncherTheme9Copy.ToolTip = "· 反馈一个 Bug，在标记为 [完成] 后回复识别码要求解锁（右键打开反馈页面）" & vbCrLf & "· 提交一个 Pull Request 或主页预设，在标记为 [完成] 后回复识别码要求解锁"
-        RadioLauncherTheme9.ToolTip = "· 反馈一个 Bug，在标记为 [完成] 后回复识别码要求解锁" & vbCrLf & "· 提交一个 Pull Request 或主页预设，在标记为 [完成] 后回复识别码要求解锁"
-        '极客蓝的处理在 ThemeCheck 中
+        ApplyPersonalizationControls(Me)
 
     End Sub
     Public Sub Refresh()
@@ -364,7 +357,7 @@ Refresh:
             RadioLauncherTheme5.Checked = True
         End If
     End Sub
-    Private Sub LabLauncherTheme11Click_MouseLeftButtonUp() Handles LabLauncherTheme11Click.MouseLeftButtonUp, RadioLauncherTheme11.MouseRightButtonUp
+    Private Sub LabLauncherTheme11Click_MouseLeftButtonUp() Handles LabLauncherTheme11Click.MouseLeftButtonUp
         If LabLauncherTheme11Click.Visibility = Visibility.Collapsed OrElse If(LabLauncherTheme11Click.ToolTip, "").ToString.Contains("点击") Then
             If MyMsgBox(
                 "1. 不爬取或攻击相关服务或网站，不盗取相关账号，没有谜题可以或需要以此来解决。" & vbCrLf &
@@ -377,10 +370,10 @@ Refresh:
             End If
         End If
     End Sub
-    Private Sub LabLauncherTheme8Copy_MouseRightButtonUp() Handles LabLauncherTheme8Copy.MouseRightButtonUp, RadioLauncherTheme8.MouseRightButtonUp
+    Private Sub LabLauncherTheme8Copy_MouseRightButtonUp() Handles LabLauncherTheme8Copy.MouseRightButtonUp
         OpenWebsite("https://meloong.com/afd/a/LTCat")
     End Sub
-    Private Sub LabLauncherTheme9Copy_MouseRightButtonUp() Handles LabLauncherTheme9Copy.MouseRightButtonUp, RadioLauncherTheme9.MouseRightButtonUp
+    Private Sub LabLauncherTheme9Copy_MouseRightButtonUp() Handles LabLauncherTheme9Copy.MouseRightButtonUp
         PageOtherLeft.TryFeedback()
     End Sub
 

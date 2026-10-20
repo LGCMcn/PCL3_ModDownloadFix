@@ -78,8 +78,16 @@ Friend Module ModSecret
 
     Public Sub ThemeRefresh(Optional NewTheme As Integer = -1)
         Try
-            If ThemeNow = NewTheme AndAlso NewTheme >= 0 Then Return
-            If NewTheme >= 0 Then ThemeNow = NewTheme
+            Dim Selected = If(NewTheme < 0, Settings.Get(Of Integer)("UiLauncherTheme"), NewTheme)
+            If Selected < 0 OrElse Selected > 14 Then Selected = 0
+            ThemeNow = Selected
+            Dim Palette = GetPersonalizationPalette(Selected,
+                Settings.Get(Of Integer)("UiLauncherHue"), Settings.Get(Of Integer)("UiLauncherSat"),
+                Settings.Get(Of Integer)("UiLauncherLight"), Settings.Get(Of Integer)("UiLauncherDelta"))
+            ColorHue = Palette.Hue
+            ColorSat = Palette.Saturation
+            ColorLightAdjust = Palette.LightAdjust
+            ColorHueTopbarDelta = Palette.Gradient
 
             Color1 = New MyColor().FromHSL2(ColorHue, ColorSat * 0.2, 25 + ColorLightAdjust * 0.3)
             Color2 = New MyColor().FromHSL2(ColorHue, ColorSat, 45 + ColorLightAdjust)
@@ -121,7 +129,7 @@ Friend Module ModSecret
     Public Sub ThemeRefreshMain()
         RunInUi(
         Sub()
-            If Not FrmMain.IsLoaded Then Return
+            If FrmMain Is Nothing OrElse Not FrmMain.IsLoaded Then Return
             '顶部条背景
             Dim Brush = New LinearGradientBrush With {.EndPoint = New Point(1, 0), .StartPoint = New Point(0, 0)}
             Dim Deltas = ColorHueTopbarDelta.Switch(Function(d) New Integer() {-d, 0, d}, Function(d) d)
@@ -144,6 +152,7 @@ Friend Module ModSecret
         End Sub)
     End Sub
     Friend Sub ThemeCheckAll(EffectSetup As Boolean)
+        If EffectSetup Then ApplyPersonalizationControls(FrmSetupUI)
     End Sub
     Friend Function ThemeCheckOne(Id As Integer) As Boolean
         Return True
