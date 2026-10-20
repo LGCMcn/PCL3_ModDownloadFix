@@ -1,0 +1,2 @@
+[23:59:44] [WARN] [FabricLoader/Metadata]: Mod stutterfix uses the version mc1.20.1-0.2.0 which isn't compatible with Loader's extended semantic version format (Could not parse version number component 'mc1'!), SemVer is recommended for reliably evaluating dependencies and prioritizing newer version
+测试内容

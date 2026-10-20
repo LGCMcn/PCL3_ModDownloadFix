@@ -95,7 +95,7 @@ Public Class PageLaunchRight
                         Url = "https://ddf.pcl-community.top/Custom.xaml"
                     Case 13
                         Logger.Info("主页预设：PCL 更新摘要")
-                        Url = "https://raw.gitcode.com/ENC_Euphony/PCL-AI-Summary-HomePage/raw/master/Custom.xaml"
+                        Content = IndependentNewsHome()
                     Case 14
                         Logger.Info("主页预设：今日新闻热点")
                         Url = "https://pcl.wyc-w.top/index.xaml"

@@ -20,7 +20,7 @@
                     </Grid.ColumnDefinitions>
                     <local:MyListItem IsHitTestVisible="False" Title="龙腾猫跃" Margin="-5,0,15,0" Info="Plain Craft Launcher 的开发者！" Grid.Row="0" Grid.Column="1" />
                     <local:MyListItem IsHitTestVisible="False" Title="HerobrineXia" Margin="-5,0,15,0" Info="Plain Craft Launcher 的协力开发者！" Grid.Row="1" Grid.Column="1" />
-                    <local:MyListItem IsHitTestVisible="False" Title="Plain Craft Launcher (PCL) LGCMcn 下载修复版" Margin="-5,0,15,0" Info="当前版本：%VERSION%（%VERSIONCODE%.%BRANCH%）" Grid.Row="2" Grid.Column="1" x:Name="ItemAboutPcl" />
+                    <local:MyListItem IsHitTestVisible="False" Title="Plain Craft Launcher (PCL) LGCMcn 下载修复版" Margin="-5,0,15,0" Info="第三方版本：v1.2.0 · 上游源码版本：%VERSION%（%VERSIONCODE%.%BRANCH%）" Grid.Row="2" Grid.Column="1" x:Name="ItemAboutPcl" />
                     <Image Source="/Plain Craft Launcher 2;component/Images/Heads/LTCat.jpg" Grid.Row="0" Margin="3">
                         <Image.Clip>
                             <EllipseGeometry Center="17 17" RadiusX="17" RadiusY="17" />
@@ -44,6 +44,18 @@
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="第三方修改说明">
                 <TextBlock Margin="25,37,25,15" Text="本版本由 LGCMcn 基于 PCL 公开源码独立修改。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，本版本不代表 PCL 官方发布，不是官方发行版。保留原作者署名；源码：https://github.com/LGCMcn/PCL3_ModDownloadFix" TextWrapping="Wrap" />
+            </local:MyCard>
+            <local:MyCard Margin="0,0,0,15" Title="第三方维护者与项目">
+                <StackPanel Margin="25,37,25,18">
+                    <TextBlock Text="LGCMcn" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock Text="本分支第三方修改与维护者，负责下载修复、独立服务配置和多账号管理等修改。原项目作者仍为 PCL 官方；本分支不代表 PCL 官方发布。" TextWrapping="Wrap" Margin="0,0,0,14" />
+                    <WrapPanel>
+                        <local:MyButton Text="项目首页" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6" ColorType="Highlight"
+                                        local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://github.com/LGCMcn/PCL3_ModDownloadFix" />
+                        <local:MyButton Text="GitHub 个人主页" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,0,6"
+                                        local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://github.com/LGCMcn" />
+                    </WrapPanel>
+                </StackPanel>
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="特别鸣谢">
                 <Grid Margin="21,40,21,16">

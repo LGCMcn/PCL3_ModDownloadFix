@@ -1,4 +1,4 @@
-param([switch]$Network)
+param([switch]$Network, [switch]$ExtraNetwork)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $output = Join-Path $repoRoot 'Plain Craft Launcher 2\bin'
@@ -28,6 +28,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw '默认配置或网络检查失败。' }
     & (Join-Path $testRoot 'SmokeTests.exe') --personalization
     if ($LASTEXITCODE -ne 0) { throw '第三方个性化检查失败。' }
+    & (Join-Path $testRoot 'SmokeTests.exe') --v5
+    if ($LASTEXITCODE -ne 0) { throw '动态效果、认证与多账号检查失败。' }
+    if ($ExtraNetwork) {
+        & (Join-Path $testRoot 'SmokeTests.exe') --extra-network
+        if ($LASTEXITCODE -ne 0) { throw '新增来源的网络检查失败。' }
+    }
     @{
         MicrosoftClientId = 'local-test-client-id'
         CurseForgeApiKey = 'local-test-key'

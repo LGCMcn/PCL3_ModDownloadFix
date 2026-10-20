@@ -32,6 +32,11 @@ class SmokeTests {
         try {
             app=Assembly.LoadFrom(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"Plain Craft Launcher 2.exe"));
             var application=(System.Windows.Application)Activator.CreateInstance(app.GetType("PCL.Application"),true);
+            // A dispatcher frame can raise WPF Startup even without Application.Run.
+            // Detach the production startup before any test initializes WPF or pumps messages.
+            var startup=app.GetType("PCL.Application").GetMethod("Application_Startup",BindingFlags.Instance|BindingFlags.NonPublic);
+            application.Startup-=(System.Windows.StartupEventHandler)Delegate.CreateDelegate(typeof(System.Windows.StartupEventHandler),application,startup);
+
             var resource=app.GetManifestResourceNames().Single(n=>n.EndsWith("Resources.resources"));
             var manager=new ResourceManager(resource.Substring(0,resource.Length-10),app);
             AppDomain.CurrentDomain.AssemblyResolve += (s,e) => {
@@ -49,6 +54,20 @@ class SmokeTests {
                 app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
                 Personalization();
                 Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
+            }
+            if(args.Contains("--v5")) {
+                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                V5Checks(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
+            }
+            if(args.Contains("--extra-network")) {
+                Call("ModBase","RunInUi"); // Initialize UI thread identity before creating the request worker.
+                var thread = new System.Threading.Thread(() => {
+                    try {
+                        Check(((System.Collections.IList)Call("ModExtraSources","FetchExtraProjects","GitHub","CaffeineMC/sodium")).Count==1,"real GitHub API project lookup");
+                        Check(((System.Collections.IList)Call("ModExtraSources","FetchExtraProjects","FTB","stoneblock")).Count>0,"real FTB API search and details");
+                        Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
+                    } catch(Exception e) {Console.WriteLine(e); Environment.Exit(1);}
+                }); thread.Start(); thread.Join();
             }
             if(args.Contains("--custom-config")) { CustomConfig(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0); }
             if(args.Contains("--invalid-config")) {
@@ -97,45 +116,25 @@ class SmokeTests {
     static int PaletteField(object palette,string name) {return (int)palette.GetType().GetField(name).GetValue(palette);}
     static void Personalization() {
         for(int id=0;id<=14;id++) {
-            var palette=Call("ModPersonalization","GetPersonalizationPalette",id);
-            Check(PaletteField(palette,"Hue")>=0 && PaletteField(palette,"Hue")<360 && PaletteField(palette,"Saturation")>=0 && PaletteField(palette,"Saturation")<=100,"valid independent palette "+id);
+            var p=Call("ModPersonalization","GetPersonalizationPalette",id);
+            Check(PaletteField(p,"Hue")==210 && PaletteField(p,"Saturation")==85 && PaletteField(p,"Gradient")==0,"Windows palette remains blue for saved id "+id);
         }
         var custom=Call("ModPersonalization","GetPersonalizationPalette",14,359,91,35,60);
-        Check(PaletteField(custom,"Hue")==359 && PaletteField(custom,"Saturation")==91 && PaletteField(custom,"LightAdjust")==15 && PaletteField(custom,"Gradient")==-30,"custom controls map to palette values");
-        var limits=Call("ModPersonalization","GetPersonalizationPalette",14,999,-5,99,999);
-        Check(PaletteField(limits,"Hue")==0 && PaletteField(limits,"Saturation")==0 && PaletteField(limits,"LightAdjust")==20 && PaletteField(limits,"Gradient")==90,"custom values are clamped");
-        Check(PaletteField(Call("ModPersonalization","GetPersonalizationPalette",14),"Gradient")==0,"default gradient slider is centered at zero");
-        Check(PaletteField(Call("ModPersonalization","GetPersonalizationPalette",-1),"Hue")==210,"unknown palette falls back to blue");
-        Check(Convert.ToInt32(app.GetType("PCL.ModSecret").GetProperty("CurrentRank").GetValue(null))==0,"official sponsor identity remains None");
+        Check(PaletteField(custom,"Hue")==210 && PaletteField(custom,"Gradient")==0,"custom hue cannot re-enable sponsor-like themes");
         Call("Settings","Set","UiLauncherTheme",14);
-        Call("Settings","Set","UiLauncherHue",312);
-        Call("Settings","Set","UiLauncherSat",70);
-        Call("Settings","Set","UiLauncherLight",25);
-        Call("Settings","Set","UiLauncherDelta",30);
-        Call("ModSecret","ThemeRefresh");
         var secret=app.GetType("PCL.ModSecret");
-        Check((int)secret.GetField("ColorHue").GetValue(null)==312 && (int)secret.GetField("ColorLightAdjust").GetValue(null)==5,"saved custom settings refresh runtime palette");
-        Check(System.Windows.Application.Current.Resources["ColorBrush3"] is System.Windows.Media.SolidColorBrush,"theme writes actual WPF color resources");
+        Check((int)secret.GetField("ColorHue").GetValue(null)==210 && (int)Call("Settings","Get","UiLauncherTheme")==0,"old custom setting migrates to blue");
+        Check(Convert.ToInt32(secret.GetProperty("CurrentRank").GetValue(null))==0,"official sponsor identity remains None");
         var page=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.PageSetupUI"));
         Call("ModPersonalization","ApplyPersonalizationControls",page);
-        for(int id=0;id<=14;id++) {
-            var control=(System.Windows.UIElement)page.FindName("RadioLauncherTheme"+id);
-            Check(control!=null && control.IsEnabled && control.Opacity==1,"preset is selectable without sponsor code "+id);
-        }
-        Check(((System.Windows.UIElement)page.FindName("PanLauncherHide")).Visibility==System.Windows.Visibility.Collapsed,"sponsor overlay does not block third-party controls");
-        foreach(string name in new[]{"LabLauncherTheme5Unlock","LabLauncherTheme8Copy","LabLauncherTheme9Copy","LabLauncherTheme11Click"})
-            Check(((System.Windows.UIElement)page.FindName(name)).Visibility==System.Windows.Visibility.Collapsed,"legacy overlay hidden: "+name);
+        Check(((System.Windows.UIElement)page.FindName("PanLauncherTheme")).Visibility==System.Windows.Visibility.Collapsed,"sponsor-like theme controls are hidden");
+        Check(!((System.Windows.UIElement)page.FindName("RadioLauncherTheme14")).IsEnabled,"custom hue control cannot be selected");
+        Check(page.FindName("CardBackground")!=null && page.FindName("CardMusic")!=null,"original background and music controls retained");
         Call("SettingService","RefreshSettings",page);
-        page.Measure(new System.Windows.Size(950,780));
-        page.Arrange(new System.Windows.Rect(0,0,950,780));
-        page.UpdateLayout();
-        var image=new System.Windows.Media.Imaging.RenderTargetBitmap(950,780,96,96,System.Windows.Media.PixelFormats.Pbgra32);
-        image.Render(page);
-        var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();
-        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
+        page.Measure(new System.Windows.Size(950,1300)); page.Arrange(new System.Windows.Rect(0,0,950,1300));page.UpdateLayout();
+        var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap(950,1300,96,96,System.Windows.Media.PixelFormats.Pbgra32);
+        bitmap.Render(page);var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
         using(var preview=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"personalization-preview.png"))) encoder.Save(preview);
-        Call("Settings","Set","UiLauncherTheme",0);
-        Check((int)secret.GetField("ColorHue").GetValue(null)==210,"switching back to default resets hue");
     }
     static void CustomConfig() {
         Check((string)Call("ModServices","ResolveServiceUrl","https://bmclapi2.bangbang93.com/maven/a.jar?x=1")=="https://bmcl.example.test/base/maven/a.jar?x=1","custom BMCL endpoint preserves path");
@@ -152,6 +151,90 @@ class SmokeTests {
         Call("ModServices","ExportPublicServiceConfig",exported);
         var json=JObject.Parse(File.ReadAllText(exported));
         Check(json["CurseForgeApiKey"]==null && json["UnrelatedSecret"]==null && (string)json["MicrosoftClientId"]=="local-test-client-id","modpack export uses public allowlist and excludes secrets");
+    }
+    static void V5Checks() {
+        var secret=app.GetType("PCL.ModMicrosoftAuth");
+        string device=(string)secret.GetField("MicrosoftDeviceEndpoint").GetRawConstantValue();
+        string token=(string)secret.GetField("MicrosoftTokenEndpoint").GetRawConstantValue();
+        Check(device.StartsWith("https://login.microsoftonline.com/consumers/") && token.StartsWith("https://login.microsoftonline.com/consumers/"),"initial and refresh authorization use the same authority");
+        Environment.SetEnvironmentVariable("PCL_MS_CLIENT_ID","11111111-1111-1111-1111-111111111111");
+        Check(((string)Call("ModMicrosoftAuth","MicrosoftForm","device")).Contains("XboxLive.signin+offline_access"),"device grant requests only Xbox sign-in and refresh permissions");
+        string encoded=(string)Call("ModMicrosoftAuth","MicrosoftForm","refresh","a&x=1+secret");
+        Check(encoded.Contains("refresh_token=a%26x%3D1%2Bsecret"),"refresh token is form encoded");
+        Check((int)Call("ModMicrosoftAuth","DevicePollingDelay",7,"authorization_pending")==7,"pending response preserves server polling interval");
+        Check((int)Call("ModMicrosoftAuth","DevicePollingDelay",7,"slow_down")==12,"slow_down adds five seconds");
+        Check((int)Call("ModMicrosoftAuth","DevicePollingDelay",0,"pending")==1,"invalid polling interval cannot produce a busy loop");
+        Check((bool)Call("ModMicrosoftAuth","IsMicrosoftVerificationUri","https://www.microsoft.com/link"),"official Microsoft verification URL accepted");
+        foreach(string u in new[]{"http://microsoft.com/link","https://microsoft.com.evil.test/link","https://microsoft.com@evil.test/","https://login.microsoftonline.com:444/link"})
+            Check(!(bool)Call("ModMicrosoftAuth","IsMicrosoftVerificationUri",u),"untrusted verification URL blocked: "+u);
+        Check(((string)Call("ModMicrosoftAuth","MinecraftLoginFailure",403,"Invalid app registration")).Contains("Client ID"),"unapproved application is distinguished from IP errors");
+        Check(((string)Call("ModMicrosoftAuth","MinecraftLoginFailure",429,"")).Contains("频繁"),"rate limit gives retry guidance");
+        Call("ModNet","ShouldValidateSslCertificateOnLogin",false);
+        Check(!System.Net.ServicePointManager.ServerCertificateValidationCallback(null,null,null,System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors),"migrated disabled certificate setting cannot bypass HTTPS checks");
+        Check(System.Net.ServicePointManager.ServerCertificateValidationCallback(null,null,null,System.Net.Security.SslPolicyErrors.None),"valid HTTPS certificates accepted");
+        string plain="synthetic-token-never-a-real-account";
+        string encrypted=(string)Call("ModMicrosoftAuth","ProtectLocal",plain);
+        Check(encrypted.StartsWith("dpapi:") && !encrypted.Contains(plain),"local credentials encrypted with Windows DPAPI");
+        Check((string)Call("ModMicrosoftAuth","UnprotectLocal",encrypted)==plain,"DPAPI credentials round trip");
+        try {Call("ModMicrosoftAuth","UnprotectLocal","dpapi:AA=="); throw new Exception("corrupt credential accepted");} catch(System.Security.Cryptography.CryptographicException) {Check(true,"corrupt ciphertext rejected");}
+        Check((string)Call("ModExtraSources","GitHubSearchAddress","CaffeineMC/sodium")=="https://api.github.com/repos/CaffeineMC/sodium","GitHub direct repository lookup preserves ownership");
+        Check(((string)Call("ModExtraSources","FtbSearchAddress","a&x=1")).EndsWith("term=a%26x%3D1"),"FTB query cannot inject additional URL parameters");
+        string asset="https://github.com/owner/repo/releases/download/1.0/mod.jar";
+        Check((bool)Call("ModExtraSources","IsAllowedGitHubAsset",asset,"owner/repo","mod.jar"),"GitHub release JAR download accepted");
+        Check(!(bool)Call("ModExtraSources","IsAllowedGitHubAsset",asset.Replace("github.com","github.com.evil.test"),"owner/repo","mod.jar"),"foreign download host rejected");
+        Check(!(bool)Call("ModExtraSources","IsAllowedGitHubAsset",asset,"other/repo","mod.jar"),"asset must belong to selected repository");
+        Check(!(bool)Call("ModExtraSources","IsAllowedGitHubAsset",asset,"owner/repo","../mod.jar"),"release filename cannot traverse directories");
+        Check(!(bool)Call("ModExtraSources","IsAllowedGitHubAsset",asset,"owner/repo","installer.exe"),"EXE assets excluded from resource browser");
+        using(var request=new HttpRequestMessage(HttpMethod.Get,"https://api.curseforge.com/v1/mods/1")) {
+            request.Headers.Add("x-api-key","synthetic-key");
+            Check((bool)Call("ModMicrosoftAuth","NeedsPrivateTransport",request),"requests with API keys avoid shared disk cache and implicit redirects");
+            using(var redirected=(HttpRequestMessage)Call("ModMicrosoftAuth","SafeRedirectGet",request,new Uri("https://files.example.test/mod.jar")))
+                Check(!redirected.Headers.Contains("x-api-key"),"redirect cannot forward API key to a foreign host");
+            request.Headers.Add("Authorization","Bearer synthetic-token");
+            try {Call("ModMicrosoftAuth","SafeRedirectGet",request,new Uri("https://files.example.test/mod.jar"));throw new Exception("credential redirect accepted");}
+            catch(HttpRequestException) {Check(true,"account-authenticated redirect rejected");}
+        }
+        var page=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.PageSetupUI"));
+        Check(page.FindName("ComboDynamicMode")==null && page.FindName("BtnAccountManager")!=null,"actual settings page retains account management and excludes restricted effects");
+        var resources=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.PageResource"));
+        Check(resources.FindName("BtnGitHubSource")!=null && resources.FindName("BtnFtbSource")!=null,"actual resource page exposes new sources");
+        // Redirect registry-backed account settings to temporary normal settings in this process only.
+        // The real launcher registry entries and the user's account files are never accessed by these tests.
+        var entries=(System.Collections.IDictionary)app.GetType("PCL.Settings").GetField("Entries").GetValue(null);
+        foreach(System.Collections.DictionaryEntry e in entries) {
+            string key=(string)e.Key;
+            if(key.StartsWith("CacheMs") || key=="LoginMsJson") {
+                var field=e.Value.GetType().GetField("Source"); field.SetValue(e.Value,Enum.ToObject(field.FieldType,0));
+            }
+        }
+        string store=(string)app.GetType("PCL.ModAccounts").GetField("AccountStorePath").GetValue(null);
+        Check(!File.Exists(store),"account test store belongs to this fresh temporary installation");
+        try {
+            Action<string,string> save=(uuid,name)=> {
+                Call("Settings","Set","CacheMsV2Uuid",uuid); Call("Settings","Set","CacheMsV2Name",name);
+                Call("Settings","Set","CacheMsV2OAuthRefresh","synthetic-refresh-"+uuid);
+                Call("Settings","Set","CacheMsV2Access","synthetic-access-"+uuid);
+                Call("Settings","Set","CacheMsV2ClientId","11111111-1111-1111-1111-111111111111");
+                Call("Settings","Set","CacheMsV2Expires",123456789L); Call("ModAccounts","SaveCurrentAccount");
+            };
+            string a=new string('a',32),b=new string('b',32),client="11111111-1111-1111-1111-111111111111";
+            save(a,"SyntheticAlice"); save(b,"SyntheticBob");
+            Check(((JArray)Call("ModAccounts","ReadAccounts")).Count==2,"two accounts persist independently");
+            string disk=File.ReadAllText(store);
+            Check(disk.StartsWith("dpapi:") && !disk.Contains("SyntheticAlice") && !disk.Contains("synthetic-refresh"),"account store contains no plaintext names or tokens");
+            Call("ModAccounts","SelectStoredAccount",a,client);
+            Check((string)Call("Settings","Get","CacheMsV2Name")=="SyntheticAlice","switching restores selected account");
+            Check((string)Call("Settings","Get","CacheMsV2OAuthRefresh")=="synthetic-refresh-"+a,"switching keeps each account's refresh token");
+            save(a,"SyntheticAliceRenamed");
+            Check(((JArray)Call("ModAccounts","ReadAccounts")).Count==2,"renaming a player does not duplicate its UUID");
+            Call("ModAccounts","RemoveStoredAccount",b,client);
+            Check(((JArray)Call("ModAccounts","ReadAccounts")).Count==1 && (string)Call("Settings","Get","CacheMsV2Name")=="SyntheticAliceRenamed","removing another account preserves active account");
+            Call("ModAccounts","RemoveStoredAccount",a,client);
+            Check(((JArray)Call("ModAccounts","ReadAccounts")).Count==0 && (string)Call("Settings","Get","CacheMsV2OAuthRefresh")=="","removing active account clears local active credentials");
+            File.WriteAllText(store,"dpapi:AA==");
+            try {Call("ModAccounts","ReadAccounts");throw new Exception("bad account file accepted");} catch(Exception e) {Check(e.Message.Contains("原文件已保留") && File.ReadAllText(store)=="dpapi:AA==","unreadable account store is preserved");}
+        } finally {if(File.Exists(store)) File.Delete(store);}
+        Environment.SetEnvironmentVariable("PCL_MS_CLIENT_ID",null);
     }
     static void Network(Assembly core) {
         Console.WriteLine("NETWORK: checking logger");

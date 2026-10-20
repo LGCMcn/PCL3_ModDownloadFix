@@ -6,7 +6,7 @@
     PanScroll="PanBack">
     <local:MyScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
         <StackPanel x:Name="PanMain" Margin="25,10">
-            <local:MyCard Margin="0,15" Title="基础（第三方免费个性化）" x:Name="CardLauncher">
+            <local:MyCard Margin="0,15" Title="基础" x:Name="CardLauncher">
                 <Grid Margin="25,40,25,17">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
@@ -38,7 +38,8 @@
                             <local:MySlider local:SettingService.Key="UiLauncherLight" 
                                             Grid.Row="2" Grid.Column="4" x:Name="SliderLauncherLight" Visibility="Collapsed" MaxValue="40" ValueByKey="5" Margin="0,10,0,0" />
                         </Grid>
-                        <Grid x:Name="PanLauncherTheme" Height="90" Margin="0,0,0,7">
+                        <TextBlock Text="Windows 版固定使用蓝色主色调，遵循 PCL 存储库合理使用指南。" TextWrapping="Wrap" Margin="0,0,0,12" />
+                        <Grid Visibility="Collapsed" x:Name="PanLauncherTheme" Height="90" Margin="0,0,0,7">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="Name1" />
                                 <ColumnDefinition />
@@ -65,11 +66,11 @@
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="4" 
                                               Grid.Column="5" Grid.Row="0" Text="榛果棕" x:Name="RadioLauncherTheme4" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="5" 
-                                              Grid.Column="1" Grid.Row="1" Text="薄雾灰" x:Name="RadioLauncherTheme5" Opacity="1" />
-                            <local:MyRadioBox Grid.Column="1" Grid.Row="1" Text="薄雾灰" x:Name="RadioLauncherTheme5Gray" IsEnabled="False" Visibility="Collapsed" Opacity="0" />
+                                              Grid.Column="1" Grid.Row="1" Text="深空黑" x:Name="RadioLauncherTheme5" Opacity="1" />
+                            <local:MyRadioBox Grid.Column="1" Grid.Row="1" Text="深空黑" x:Name="RadioLauncherTheme5Gray" IsEnabled="False" Visibility="Collapsed" Opacity="0" />
                             <TextBlock Grid.Column="1" Grid.Row="1" x:Name="LabLauncherTheme5Unlock" Visibility="Collapsed" IsHitTestVisible="False" Background="{StaticResource ColorBrushSemiTransparent}" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="12" 
-                                              Grid.Column="2" Grid.Row="1" Text="极光渐变" x:Name="RadioLauncherTheme12" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
+                                              Grid.Column="2" Grid.Row="1" Text="流动彩虹" x:Name="RadioLauncherTheme12" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="6" 
                                               Grid.Column="3" Grid.Row="1" Text="樱花粉" x:Name="RadioLauncherTheme6" IsEnabled="True" ToolTipService.ShowOnDisabled="True" />
                             <local:MyRadioBox local:SettingService.Key="UiLauncherTheme" local:SettingService.Value="7" 
@@ -94,12 +95,18 @@
                     </StackPanel>
                     <Border Background="#DDDDDDDD" Margin="-8,23,-5,28" CornerRadius="4" Name="PanLauncherHide" Visibility="Collapsed">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="LGCMcn 第三方免费配色，无需赞助码；不代表 PCL 官方赞助身份或官方主题授权。" FontSize="13" Margin="0,0,0,0" />
+                            <TextBlock Text="Windows 版遵循原项目指南，不提供赞助主题的类似功能或表现。" FontSize="13" Margin="0,0,0,0" />
                             <local:MyButton Height="32" MinWidth="140" Text="支持 PCL 开发！" Padding="13,0" HorizontalAlignment="Center" Margin="0,9,0,0" ColorType="Highlight"
                                             local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://meloong.com/afd/a/LTCat" />
                         </StackPanel>
                     </Border>
                 </Grid>
+            </local:MyCard>
+            <local:MyCard Title="微软多账号管理" Margin="0,0,0,15">
+                <StackPanel Margin="25,40,25,20">
+                    <TextBlock Text="保存多个正版账号，按玩家 UUID 管理并切换；账号数据使用当前 Windows 用户加密。" TextWrapping="Wrap" Margin="0,0,0,12" />
+                    <local:MyButton x:Name="BtnAccountManager" Text="管理微软账号" Height="35" HorizontalAlignment="Left" MinWidth="160" />
+                </StackPanel>
             </local:MyCard>
             <local:MyCard x:Name="CardBackground" Margin="0,0,0,15" Title="背景图片">
                 <StackPanel Margin="25,40,25,20">
@@ -279,7 +286,7 @@
                             <!--<local:MyComboBoxItem local:SettingService.Value="10" Content="OpenMCIM 仪表盘（作者：SALTWOOD）" />-->
                             <local:MyComboBoxItem local:SettingService.Value="11" Content="杂志主页（作者：CreeperIsASpy）" />
                             <local:MyComboBoxItem local:SettingService.Value="12" Content="PCL GitHub 仪表盘（作者：Deep-Dark-Forest）" />
-                            <local:MyComboBoxItem local:SettingService.Value="13" Content="Minecraft 更新摘要（作者：pynickle）" />
+                            <local:MyComboBoxItem local:SettingService.Value="13" Content="Minecraft 官方版本信息" />
                             <local:MyComboBoxItem local:SettingService.Value="14" Content="今日新闻热点（作者：EYicheng）" />
                             <local:MyComboBoxItem local:SettingService.Value="15" Content="Minecraft 芝士站（作者：awaEric233）" />
                             <local:MyComboBoxItem local:SettingService.Value="16" Content="整合包推荐引擎（作者：CHMYGZ）" />

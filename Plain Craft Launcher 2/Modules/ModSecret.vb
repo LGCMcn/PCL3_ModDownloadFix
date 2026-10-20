@@ -3,7 +3,8 @@
 Friend Module ModSecret
 
     '标注 PCL 的不同分支，仅用于替换标记
-    Public Const VersionBranchMain As String = "LGCMcn DownloadFix"
+    Public Const DownloadFixVersion As String = "1.2.0"
+    Public Const VersionBranchMain As String = "LGCMcn DownloadFix v1.2.0"
     '在开源版的注册表与常规版的注册表隔离，以防数据冲突
     Public Const RegFolder As String = "PCLDownloadFix"
     '用于微软登录的 ClientId
@@ -78,7 +79,8 @@ Friend Module ModSecret
 
     Public Sub ThemeRefresh(Optional NewTheme As Integer = -1)
         Try
-            Dim Selected = If(NewTheme < 0, Settings.Get(Of Integer)("UiLauncherTheme"), NewTheme)
+            Dim Selected = 0
+            If Settings.Get(Of Integer)("UiLauncherTheme") <> 0 Then Settings.Set("UiLauncherTheme", 0)
             If Selected < 0 OrElse Selected > 14 Then Selected = 0
             ThemeNow = Selected
             Dim Palette = GetPersonalizationPalette(Selected,

@@ -27,7 +27,7 @@
                     <local:MyTextBox x:Name="TextSearchName" Grid.Column="1" Grid.ColumnSpan="2" />
                     <TextBlock VerticalAlignment="Center" Grid.Column="4" HorizontalAlignment="Left" Text="来源" Margin="0,0,18,0" />
                     <local:MyComboBox x:Name="ComboSearchSource" Grid.Column="5">
-                        <local:MyComboBoxItem Content="全部" Tag="3" IsSelected="True" />
+                        <local:MyComboBoxItem Content="全部（已接入）" Tag="3" IsSelected="True" />
                         <local:MyComboBoxItem Content="CurseForge" Tag="1" />
                         <local:MyComboBoxItem Content="Modrinth" Tag="2" />
                     </local:MyComboBox>
@@ -68,6 +68,16 @@
                     <local:MyButton x:Name="BtnSearchInstallModPack" Text="安装已有整合包" MinWidth="140" Padding="13,0" Margin="0,0,20,0" Grid.Column="2"
                                     ToolTip="在当前选择的 Minecraft 文件夹下安装整合包" />
                 </Grid>
+            </StackPanel>
+        </local:MyCard>
+        <local:MyCard Title="更多资源来源" Margin="0,0,0,15">
+            <StackPanel Margin="25,40,25,18">
+                <TextBlock x:Name="LabSourceStatus" TextWrapping="Wrap" Margin="0,0,0,12" />
+                <WrapPanel>
+                    <local:MyButton x:Name="BtnGitHubSource" Text="GitHub 发布目录" Height="34" MinWidth="140" Margin="0,0,12,8" />
+                    <local:MyButton x:Name="BtnFtbSource" Text="FTB 整合包目录" Height="34" MinWidth="140" Margin="0,0,12,8" />
+                    <local:MyButton x:Name="BtnSourceSetup" Text="服务配置与申请" Height="34" MinWidth="140" Margin="0,0,0,8" />
+                </WrapPanel>
             </StackPanel>
         </local:MyCard>
         <StackPanel x:Name="PanContent">

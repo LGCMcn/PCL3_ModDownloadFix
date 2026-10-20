@@ -13,13 +13,26 @@
 
 适用于 64 位 Windows，需要 .NET Framework 4.8。当前成品附带 x64 EasyTier 组件。启动器仍会自动查找／下载所需 Java，本次未实际验证完整游戏启动。
 
-## 第三方免费个性化
+## Windows 个性化与版本标识
 
-此次构建新增独立免费配色。在“设置 → 个性化 → 基础（第三方免费个性化）”可直接选择 14 个预设，或选择“自由配色”，调整色相、饱和度、亮度和渐变。设置会保存在本第三方版本自己的配置中，切换和调整滑条时即时刷新。
+本版遵循上游指南固定使用蓝色主色调，不提供免费赞助主题、自由主色或彩虹换色。旧主题设置会回到蓝色。背景图片、背景音乐、标题栏设置及自定义主页继续保留。主页 PCL 标识旁显示“第三方版本 v1.2.0”，正式名称保留 Plain Craft Launcher (PCL) 前缀与 LGCMcn 第三方后缀。
 
-这些是第三方自行设计的预设；渐变为静态效果，不承诺复现官方的深色主题、动态彩虹和其他私有特效。原公开源码中的背景图片、背景音乐、标题栏与自定义主页功能继续保留。官方赞助等级仍为 None，本版不生成官方赞助码，不获得官方赞助权益。
+## 微软多账号管理
 
-已通过 72 项程序检查，其中 43 项覆盖配色参数、自定义范围、设置刷新、真实 WPF 颜色资源和控件可选状态。本次源码和运行包随 GitHub Release 发布。NAS 由维护者手动同步，可能晚于 GitHub；请核对同一 Release 提供的 SHA256。
+在“设置 → 个性化 → 微软多账号管理”打开管理窗口；登录页和已登录账号的信息菜单也有入口。支持添加并网页登录、切换选中账号、单独移除本机记录。正在登录或启动游戏时暂不允许切换，避免两条登录流程同时覆盖令牌。
+
+同一玩家改名后按 UUID 更新记录；不同 Client ID 的授权记录分开保存。更换应用 Client ID 后需重新授权，不会把旧令牌发给另一应用。删除本机记录不会删除微软账号，也不等于服务端撤销授权；需要时请在微软账户的应用权限页面撤销授权。
+
+新增账号列表保存在当前 Windows 用户的 LocalAppData/PCLDownloadFix/Accounts，按启动器安装目录分开，用 Windows DPAPI 加密。请勿把凭据文件提交到仓库；迁移到其他 Windows 用户／电脑时请重新登录。原有旧账号下拉列表保留兼容，不向其他启动器导入凭据。
+
+## 更多资源来源
+
+资源搜索页的“全部”会使用已配置的来源。无 CurseForge Key 时默认使用 Modrinth，页面会显示原因；不是只有一个来源筛选选项。
+
+- Modrinth：可直接搜索、选择版本并下载，无需 Key。
+- CurseForge：申请审核通过后填写本项目自己的 Key；没有 Key 的情况下不保证独占资源及整合包依赖可用。
+- GitHub 发布目录：输入关键词，或直接输入 `CaffeineMC/sodium` 这样的作者／仓库名。支持查看最新发布的 JAR、ZIP、MRPACK，选择保存位置，校验大小和来源提供的 SHA256。不会自动运行或安装；需自己选择游戏版本及加载器。匿名搜索存在限流，直接输入仓库名可减少搜索请求。
+- FTB 官方整合包目录：搜索整合包、浏览简介并打开官方安装入口。目前是目录浏览，不是本启动器内的 FTB 自动安装器。
 
 ## 哪些已经验证
 
@@ -80,7 +93,51 @@ CurseForge 官方 API 需要你自己的 API Key；其官方公告还说明 CDN 
 
 - “检查更新”打开本分支 GitHub Releases；未实现官方原有的自动下载／替换更新。
 - Minecraft 新闻预设改为直接查询 Mojang／BMCLAPI 版本信息，并链接 Minecraft 官方新闻，展示内容与原作者新闻服务不同。
-- 官方赞助等级仍为 None；第三方独立提供上述免费配色，未重建官方服务器、密钥、赞助权益或全部私有特效。
+- 官方赞助等级为 None，不重建赞助解锁体系或类似表现；Windows 主色固定为蓝色。
 - LiteLoader 等旧服务、第三方自定义主页的可用性，仍由对应运营者决定。
 
 详细调用链、修改内容和验证边界见[项目分析与验证](analysis.md)。源码在本仓库及 Release 的 `PCL.DownloadFix.Source.zip`，保留原许可和署名。
+
+
+## 维护者需要完成的申请
+
+### Microsoft Client ID 与 Minecraft 接入
+
+1. 用你自己的账号进入 [Microsoft Entra 管理中心](https://entra.microsoft.com/)，进入“应用注册 → 新注册”。需要可注册应用的租户／账号权限，具体条件以微软页面为准。
+2. 应用名称建议填写 `Plain Craft Launcher (PCL) LGCMcn DownloadFix`；账号类型选择支持个人 Microsoft 账号的类型。记录 **Application (client) ID**，不是 Directory ID、Object ID 或 Client Secret。
+3. 在 Authentication／高级设置中启用公共客户端流程（Allow public client flows）。本版使用设备代码授权，无需把 Client Secret 放进桌面程序。
+4. 按 [Minecraft 应用接入说明](https://aka.ms/AppRegInfo) 的当前要求申请本项目的 API 使用资格。Entra 注册完成不等于 Minecraft Services 已允许该 Client ID。若最终步骤返回 `Invalid app registration`，需等待或核实接入许可，不是简单更换网络就能解决。
+5. 在启动器“独立服务配置”界面填写 Client ID，保存后重启，再用持有正版 Minecraft 的账号在微软网页完成授权。维护者配置好项目级应用后，普通用户不需要各自注册应用。
+
+可直接用于申请的项目介绍（联系邮箱请填你自己的）：
+
+> Project: Plain Craft Launcher (PCL) LGCMcn DownloadFix. Repository: https://github.com/LGCMcn/PCL3_ModDownloadFix. This is an independently maintained third-party Windows desktop launcher based on publicly available PCL source, retaining upstream attribution and licensing conditions. Authentication uses Microsoft's public-client device authorization flow, Xbox Live/XSTS and Minecraft Services. Users sign in on Microsoft-hosted pages with their own accounts; the launcher does not collect passwords or bypass game ownership checks. Refresh tokens are stored locally with Windows user-bound encryption. Please authorize our own application Client ID for Minecraft Java Edition authentication. Contact: [your email].
+
+技术资料：[微软设备代码流程](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code)、[注册应用](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app)。
+
+### CurseForge API Key
+
+1. 阅读 [官方 Key 申请说明](https://support.curseforge.com/support/solutions/articles/9000208346-about-the-curseforge-api-and-how-to-apply-for-a-key)，从说明页进入第三方开发者申请表。
+2. 申请由项目维护者提交，填写自己的联系邮箱、仓库链接、功能描述、预期用途，并亲自阅读和确认 API 条款。具体审批及使用条件由服务方决定。
+3. 获批后，在启动器的服务配置界面填写 Key，保存并重启。界面不显示已有 Key，新值会用当前 Windows 用户加密存储。环境变量 `PCL_CURSEFORGE_API_KEY` 继续优先。不要把 Key 发到聊天、README、源码或 Release。
+4. GUI 会保存 `CurseForgeApiKeyProtected`；旧的明文字段仍兼容读取，但不建议在分发目录存放个人 Key。公开配置模板保持空 Key。
+
+可用于申请的功能描述：
+
+> A third-party Windows Minecraft Java launcher maintained by LGCMcn. We request API access to search CurseForge projects, display project and version metadata, resolve dependencies, and download files when the author's distribution settings allow it. Source repository: https://github.com/LGCMcn/PCL3_ModDownloadFix. The launcher preserves source attribution and author controls, does not scrape private content or bypass disabled distribution, and never sends the API key to Modrinth, GitHub, FTB or unrelated redirected hosts. We request guidance on approved key deployment for a public desktop launcher. Contact: [your email].
+
+无需为 Modrinth、匿名 GitHub 公开项目目录或 FTB 官方公开目录注册账户。
+
+## 安全风险与保护范围
+
+| 风险 | 当前措施与边界 |
+| --- | --- |
+| 登录页钓鱼或令牌被代理截取 | 设备登录网址限定为微软官方 HTTPS 域名；始终验证证书；密码只在微软网页填写。仍应核对网页显示的应用名称与授权内容 |
+| 本地账号缓存泄露 | 新保存的凭据与账号列表使用 Windows DPAPI CurrentUser；旧 DES 设置兼容读取，新写入使用 DPAPI。相同 Windows 用户下的恶意软件或管理员仍可能读取内存／解密数据 |
+| API Key 泄露 | 配置界面加密存储；导出使用公开字段允许列表；带凭据请求不使用公共磁盘缓存；重定向重新核对目标，不跨站转发 Key。公开桌面程序无法替维护者永久保密一个共享 Key，应按服务方批准的部署方式使用 |
+| 恶意 Mod 或整合包 | 下载不等于安全，Mod 可获得游戏进程权限。GitHub 目录排除 EXE，只保存文件不自动执行；显示作者仓库并做大小／哈希校验，仍需自行判断作者与内容 |
+| 自定义主页 | 原有 XAML 主页能力可触发程序功能或命令，不应加载陌生人的远程主页。此能力保留，不能按普通图片看待 |
+| 第三方镜像、公共联机节点 | 镜像和节点由各自运营者管理；自定义 API 地址意味着信任该服务。联机组件可能需要系统网络权限；公共节点和公网互通不在本次端到端验收范围 |
+| 误报与软件签名 | 构建、代码测试或单次查杀不能保证任意环境绝对无风险。未购买或伪造代码签名证书；Windows 可能显示未签名程序提示 |
+
+维护者承诺不主动植入病毒、木马、挖矿、盗号或隐蔽后门，源码公开接受检查。该承诺仅针对本第三方项目，不为外部 Mod、下载站或第三方依赖作绝对安全担保。具体本地安全扫描与代码测试证据见本次 Release。

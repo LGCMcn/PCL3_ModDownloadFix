@@ -1,6 +1,6 @@
 Public Class PageSetupSystem
     Private Sub Services_Click() Handles BtnServices.Click
-        OpenServiceConfig()
+        OpenServiceSetup()
     End Sub
 
 

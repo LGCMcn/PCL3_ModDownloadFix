@@ -48,6 +48,7 @@ Public Class Settings
         New Setting("CacheMsProfileJson", "", Source:=Sources.Registry, Encrypted:=True),
         New Setting("CacheMsUuid", "", Source:=Sources.Registry, Encrypted:=True),
         New Setting("CacheMsName", "", Source:=Sources.Registry, Encrypted:=True),
+        New Setting("CacheMsV2ClientId", "", Source:=Sources.Registry, Encrypted:=True),
         New Setting("CacheMsV2Migrated", False, Source:=Sources.Registry),
         New Setting("CacheMsV2OAuthRefresh", "", Source:=Sources.Registry, Encrypted:=True),
         New Setting("CacheMsV2Access", "", Source:=Sources.Registry, Encrypted:=True),
@@ -120,7 +121,7 @@ Public Class Settings
         New Setting("ToolDownloadVersion", 1, Source:=Sources.Registry),
         New Setting("ToolDownloadTranslate", 0, Source:=Sources.Registry),
         New Setting("ToolDownloadTranslateV2", 1, Source:=Sources.Registry),
-        New Setting("ToolDownloadCert", False, Source:=Sources.Registry, OnChanged:=AddressOf ModNet.ShouldValidateSslCertificateOnLogin),
+        New Setting("ToolDownloadCert", True, Source:=Sources.Registry, OnChanged:=AddressOf ModNet.ShouldValidateSslCertificateOnLogin),
         New Setting("ToolDownloadMod", 2, Source:=Sources.Registry),
         New Setting("ToolModLocalNameStyle", 0, Source:=Sources.Registry),
         New Setting("ToolUpdateRelease", False, Source:=Sources.Registry),
@@ -252,9 +253,9 @@ Public Class Settings
             If Encrypted Then
                 Try
                     If Value Is Nothing Then Value = ""
-                    Value = DesEncrypt(Value, "PCL" & Identify)
+                    Value = ProtectLocal(Value)
                 Catch ex As Exception
-                    Logger.Warn(ex, $"加密设置失败：{Key}")
+                    Throw New InvalidOperationException("本地设置加密失败，已停止写入：" & Key)
                 End Try
             End If
             Select Case Source
@@ -291,7 +292,7 @@ Public Class Settings
             '触发改变事件（必须在保存之后，以保证 VersionServerLogin 之类的在事件中读取到的是最新的值）
             If Entry.OnChanged IsNot Nothing Then Entry.OnChanged.Invoke(Value)
         Catch ex As Exception
-            Logger.Error(ex, $"设置设置项时出错（{Key}, {Value}）")
+            Logger.Error(ex, $"设置设置项时出错（{Key}{If(Entry.Encrypted, "", ", " & CStr(Value))}）")
         End Try
     End Sub
     ''' <summary>
@@ -334,12 +335,12 @@ Public Class Settings
                     GotValue = Entry.DefaultValue
                 Else
                     Try
-                        GotValue = DesDecrypt(GotValue, "PCL" & Identify)
+                        GotValue = If(GotValue.StartsWith("dpapi:", StringComparison.Ordinal), UnprotectLocal(GotValue), DesDecrypt(GotValue, "PCL" & Identify))
                     Catch ex As Exception
                         Logger.Warn(ex, $"解密设置失败：{Key}")
                         GotValue = Entry.DefaultValue
                         Entry.Set(Entry.DefaultValue, Instance)
-                        Entry.Save(Instance)
+                        '保留无法解密的原始密文，不因读取失败覆盖账号记录。
                     End Try
                 End If
             End If

@@ -541,6 +541,11 @@ NextInner:
     '主加载函数，返回所有需要的登录信息
     Private Sub McLoginMsStart(Data As LoaderTask(Of McLoginMs, McLoginResult))
         Dim Input As McLoginMs = Data.Input
+        Dim ClientId = OAuthClientId
+        Dim SavedClient = Settings.Get(Of String)("CacheMsV2ClientId")
+        If Input.UserName = Settings.Get(Of String)("CacheMsV2Name") AndAlso SavedClient <> ClientId Then
+            Input.OAuthRefreshToken = ""
+        End If
         Dim LogUsername As String = Input.UserName
         McLaunchLog("登录方式：正版（" & If(LogUsername = "", "尚未登录", LogUsername) & "）")
         Data.Progress = 0.05
@@ -591,6 +596,7 @@ Relogin:
         Dim Result = MsLoginStep6(LoginResult.AccessToken)
         Data.Progress = 0.98
         '输出登录结果
+        Settings.Set("CacheMsV2ClientId", ClientId)
         Settings.Set("CacheMsV2OAuthRefresh", OAuthRefreshToken)
         Settings.Set("CacheMsV2Access", LoginResult.AccessToken)
         Settings.Set("CacheMsV2Uuid", Result.UUID)
@@ -603,6 +609,11 @@ Relogin:
         Settings.Set("LoginMsJson", MsJson.ToString(Newtonsoft.Json.Formatting.None))
         Data.Output = New McLoginResult With {.AccessToken = LoginResult.AccessToken, .Name = Result.UserName, .Uuid = Result.UUID, .Type = "Microsoft", .ClientToken = Result.UUID, .ProfileJson = Result.ProfileJson}
         '结束
+        Try
+            SaveCurrentAccount()
+        Catch Ex As Exception
+            Hint("登录成功，但保存多账号列表失败：" & Ex.Message, HintType.Red)
+        End Try
 SkipLogin:
         McLaunchLog($"微软登录结束，AccessToken 将在 {DateTimeOffset.FromUnixTimeSeconds(ExpiresAt).LocalDateTime} 过期")
         Settings.Set("HintBuy", True) '关闭正版购买提示
@@ -885,8 +896,8 @@ LoginFinish:
         '初始请求
 Retry:
         McLaunchLog("开始微软登录步骤 1/6（原始登录）")
-        Dim PrepareJson As JObject = NetRequestByClientRetry("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode", HttpMethod.Post,
-            Content:=$"client_id={OAuthClientId}&tenant=/consumers&scope=XboxLive.signin%20offline_access",
+        Dim PrepareJson As JObject = NetRequestByClientRetry(MicrosoftDeviceEndpoint, HttpMethod.Post,
+            Content:=MicrosoftForm("device"),
             ContentType:="application/x-www-form-urlencoded", RequireJson:=True).DeserializeJson()
         McLaunchLog("网页登录地址：" & PrepareJson("verification_uri").ToString)
 
@@ -916,11 +927,11 @@ Retry:
 
         Dim Result As String
         Try
-            Result = NetRequestByClientMultiple("https://login.live.com/oauth20_token.srf", HttpMethod.Post,
-                Content:=$"client_id={OAuthClientId}&refresh_token={StringUtils.FormUrlEscape(Code)}&grant_type=refresh_token&scope=XboxLive.signin%20offline_access",
+            Result = NetRequestByClientMultiple(MicrosoftTokenEndpoint, HttpMethod.Post,
+                Content:=MicrosoftForm("refresh", Code),
                 ContentType:="application/x-www-form-urlencoded",
                 Headers:={{"Accept-Language", "en-US,en;q=0.5"}, {"X-Requested-With", "XMLHttpRequest"}},
-                ThreadCount:=2)
+                ThreadCount:=1)
         Catch ex As HttpRequestCodeException
             '修改错误列表时，同时检查 MyMsgLogin.xaml.vb 中的对应代码
             Dim Response = ex.Response
@@ -941,7 +952,7 @@ Retry:
 
         Dim ResultJson As JObject = Result.DeserializeJson()
         Dim AccessToken As String = ResultJson("access_token").ToString
-        Dim RefreshToken As String = ResultJson("refresh_token").ToString
+        Dim RefreshToken As String = If(ResultJson("refresh_token")?.ToString(), Code)
         Return (AccessToken, RefreshToken)
     End Function
     '微软登录步骤 2：从 OAuth AccessToken 获取 XBLToken
@@ -1022,15 +1033,9 @@ Retry:
             Result = NetRequestByClientRetry("https://api.minecraftservices.com/authentication/login_with_xbox", HttpMethod.Post,
                 Content:=Request, ContentType:="application/json", RequireJson:=True)
         Catch ex As HttpRequestCodeException
-            If ex.StatusCode = 429 Then
-                Logger.Warn(ex, "微软登录第 4 步汇报 429")
-                Throw New Exception("$登录尝试太过频繁，请等待几分钟后再试！")
-            ElseIf ex.StatusCode = HttpStatusCode.Forbidden Then
-                Logger.Warn(ex, "微软登录第 4 步汇报 403")
-                Throw New Exception("$当前 IP 的登录尝试异常。" & vbCrLf & "如果你使用了 VPN 或加速器，请把它们关掉或更换节点后再试！")
-            ElseIf ex.StatusCode = HttpStatusCode.ServiceUnavailable Then
-                Logger.Warn(ex, "微软登录第 4 步汇报 503")
-                Throw New Exception("$Mojang 服务器出现问题，请稍后再试。" & vbCrLf & "你的网络是正常的，PCL 也是正常的，是 Mojang 出问题了……")
+            Dim Message = MinecraftLoginFailure(CInt(ex.StatusCode), ex.Response)
+            If Message IsNot Nothing Then
+                Throw New Exception(Message)
             ElseIf ex.Response?.Contains("ACCOUNT_SUSPENDED") Then '#8655
                 MyMsgBox("该账号似乎已被微软封禁，无法登录。", "登录失败", "我知道了", IsWarn:=True)
                 Throw New OperationCanceledException

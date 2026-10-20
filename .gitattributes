@@ -62,3 +62,6 @@
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
 "Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml" -text
+
+# Preserve formatting of the imported dependency.
+MeloongCore/** whitespace=-blank-at-eol

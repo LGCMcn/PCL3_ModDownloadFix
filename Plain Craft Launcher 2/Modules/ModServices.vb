@@ -15,6 +15,10 @@ Friend Module ModServices
     Public Function ServiceValue(Name As String, DefaultValue As String, Optional EnvironmentName As String = Nothing) As String
         Dim Value = If(EnvironmentName Is Nothing, Nothing, Environment.GetEnvironmentVariable(EnvironmentName))
         If Not String.IsNullOrWhiteSpace(Value) Then Return Value.Trim()
+        If Name = "CurseForgeApiKey" AndAlso ServiceConfig.Value("CurseForgeApiKeyProtected") IsNot Nothing Then
+            Dim EncryptedKey = CStr(ServiceConfig.Value("CurseForgeApiKeyProtected"))
+            If Not String.IsNullOrEmpty(EncryptedKey) Then Return UnprotectLocal(EncryptedKey)
+        End If
         Return If(ServiceConfig.Value(Name)?.Value(Of String)(), DefaultValue).Trim()
     End Function
 

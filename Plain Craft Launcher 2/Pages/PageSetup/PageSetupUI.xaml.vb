@@ -1,4 +1,7 @@
 Public Class PageSetupUI
+    Private Sub BtnAccountManager_Click() Handles BtnAccountManager.Click
+        OpenAccountManager()
+    End Sub
 
     Private Sub PageSetupUI_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
         '重复加载部分

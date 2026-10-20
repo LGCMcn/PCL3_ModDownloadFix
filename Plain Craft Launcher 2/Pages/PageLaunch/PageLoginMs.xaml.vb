@@ -1,4 +1,10 @@
 Public Class PageLoginMs
+    Public Sub BeginNewLogin()
+        BtnLogin_Click(BtnLogin, EventArgs.Empty)
+    End Sub
+    Private Sub BtnAccounts_Click() Handles BtnAccounts.Click
+        OpenAccountManager()
+    End Sub
 
     ''' <summary>
     ''' 刷新页面显示的所有信息。
@@ -90,7 +96,7 @@ Public Class PageLoginMs
                 ElseIf ex.Message.StartsWithF("$") Then
                     Hint(ex.Message.TrimStart("$"), HintType.Red)
                 ElseIf TypeOf ex Is Security.Authentication.AuthenticationException AndAlso ex.Message.Contains("SSL/TLS") Then
-                    Logger.Error(ex, $"正版登录验证失败，请考虑在 [设置 → 其他] 中关闭 [在正版登录时验证 SSL 证书]，然后再试。{vbCrLf}{vbCrLf}原始错误信息：", LogBehavior.Alert)
+                    Logger.Error(ex, $"正版登录验证失败，请检查系统时间、Windows 根证书更新和代理证书。不要关闭证书验证。{vbCrLf}{vbCrLf}原始错误信息：", LogBehavior.Alert)
                 Else
                     Logger.Error(ex, "正版登录尝试失败", LogBehavior.Alert)
                 End If

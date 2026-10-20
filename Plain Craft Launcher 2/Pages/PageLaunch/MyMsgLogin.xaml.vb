@@ -83,6 +83,7 @@ Public Class MyMsgLogin
         UserCode = Data("user_code")
         DeviceCode = Data("device_code")
         Website = Data("verification_uri")
+        If Not IsMicrosoftVerificationUri(Website) Then Throw New Exception("微软授权返回了非受信任的登录网址，已停止打开网页。")
         '设置 UI
         LabTitle.Text = "登录 Minecraft"
         LabCaption.Text =
@@ -96,65 +97,66 @@ Public Class MyMsgLogin
     End Sub
 
     Private Sub WorkThread()
-        Thread.Sleep(2000)
+        Dim Lifetime = Math.Max(1, Math.Min(1800, If(Data("expires_in")?.Value(Of Integer)(), 900)))
+        Dim PollSeconds = Math.Max(1, If(Data("interval")?.Value(Of Integer)(), 5))
+        Dim Clock = Stopwatch.StartNew()
+        Dim UnknownFailureCount As Integer = 0
         If MyConverter.IsExited Then Return
         OpenWebsite(Website)
         ClipboardSet(UserCode)
-        Thread.Sleep((Data("interval").ToObject(Of Integer) - 1) * 1000)
-        '轮询
-        Dim UnknownFailureCount As Integer = 0
         Do While Not MyConverter.IsExited
-            Try
-                Dim Result = NetRequestByClient(
-                    "https://login.microsoftonline.com/consumers/oauth2/v2.0/token", HttpMethod.Post,
-                    Content:=
-                        "grant_type=urn:ietf:params:oauth:grant-type:device_code" & "&" &
-                        "client_id=" & OAuthClientId & "&" &
-                        "device_code=" & DeviceCode & "&" &
-                        "scope=XboxLive.signin%20offline_access",
-                    ContentType:="application/x-www-form-urlencoded",
-                    Timeout:=5000 + UnknownFailureCount * 5000,
-                    MakeLog:=False, RequireJson:=True)
-                '获取结果
-                Dim ResultJson As JObject = Result.DeserializeJson()
-                McLaunchLog($"令牌过期时间：{ResultJson("expires_in")} 秒")
-                Hint("网页登录成功！", HintType.Green)
-                Finished({ResultJson("access_token").ToString, ResultJson("refresh_token").ToString})
-                Return
-            Catch ex As Exception
-                '修改错误列表时，同时修改 ModLaunch.MsLoginStep1Refresh 中的对应代码
-                If TypeOf ex Is HttpRequestCodeException Then
-                    Dim Response = CType(ex, HttpRequestCodeException).Response
-                    If Response.Contains("authorization_declined") Then
-                        Finished(New Exception("$你拒绝了 PCL 申请的权限……"))
-                        Return
-                    ElseIf Response.Contains("expired_token") Then
-                        Finished(New Exception("$登录用时太长啦，重新试试吧！"))
-                        Return
-                    ElseIf Response.Contains("Account security interrupt") Then
-                        Finished(New Exception("$该账号由于安全问题无法登陆，请前往微软账户页获取更多信息。"))
-                        Return
-                    ElseIf Response.Contains("service abuse") Then
-                        Finished(New Exception("$非常抱歉，该账号已被微软封禁，无法登录。"))
-                        Return
-                    ElseIf Response.Contains("AADSTS70000") Then '可能不能判 “invalid_grant”，见 #269
-                        Finished(New RestartException)
-                        Return
-                    ElseIf Response.Contains("authorization_pending") Then
-                        Thread.Sleep(2000)
-                        Continue Do
-                    End If
+            Dim Due = Clock.Elapsed.TotalSeconds + PollSeconds
+            While Clock.Elapsed.TotalSeconds < Due
+                If MyConverter.IsExited Then Return
+                If Clock.Elapsed.TotalSeconds >= Lifetime Then
+                    Finished(New Exception("$登录代码已过期，请重新开始登录。"))
+                    Return
                 End If
-                If UnknownFailureCount <= 2 Then
-                    UnknownFailureCount += 1
-                    Logger.Warn(ex, $"登录轮询第 {UnknownFailureCount} 次失败")
-                    Thread.Sleep(2000)
-                Else
-                    Finished(New Exception("登录轮询失败", ex))
+                Thread.Sleep(100)
+            End While
+            Try
+                Dim Result = NetRequestByClient(MicrosoftTokenEndpoint, HttpMethod.Post,
+                    Content:=MicrosoftForm("poll", DeviceCode), ContentType:="application/x-www-form-urlencoded",
+                    Timeout:=15000, MakeLog:=False, RequireJson:=True)
+                Dim ResultJson = JObject.Parse(Result)
+                Hint("网页登录成功！", HintType.Green)
+                Finished({CStr(ResultJson("access_token")), CStr(ResultJson("refresh_token"))})
+                Return
+            Catch Ex As HttpRequestCodeException
+                Dim ErrorCode As String = ""
+                Try
+                    ErrorCode = CStr(JObject.Parse(Ex.Response)("error"))
+                Catch
+                End Try
+                Select Case ErrorCode
+                    Case "authorization_pending"
+                        Continue Do
+                    Case "slow_down"
+                        PollSeconds = DevicePollingDelay(PollSeconds, "slow_down")
+                        Continue Do
+                    Case "authorization_declined", "access_denied"
+                        Finished(New Exception("$你取消或拒绝了此次登录授权。"))
+                        Return
+                    Case "expired_token", "bad_verification_code", "invalid_grant"
+                        Finished(New Exception("$登录代码已失效，请重新开始登录。"))
+                        Return
+                    Case "invalid_client", "unauthorized_client"
+                        Finished(New Exception("$本项目的 Microsoft Client ID 无效或没有启用公共客户端设备授权，请检查应用注册。"))
+                        Return
+                End Select
+                UnknownFailureCount += 1
+                PollSeconds = DevicePollingDelay(PollSeconds, "slow_down")
+                If UnknownFailureCount >= 3 Then
+                    Finished(New Exception("$微软登录轮询失败，请检查网络和应用配置后重新登录。"))
+                    Return
+                End If
+            Catch Ex As Exception
+                UnknownFailureCount += 1
+                If UnknownFailureCount >= 3 Then
+                    Finished(New Exception("$无法连接微软登录服务，请检查网络和系统证书后重试。"))
                     Return
                 End If
             End Try
         Loop
     End Sub
-
 End Class

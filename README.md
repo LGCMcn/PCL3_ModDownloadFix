@@ -1,68 +1,76 @@
 # Plain Craft Launcher (PCL) LGCMcn 下载修复版
 
-> **第三方版本声明：** 本项目是 LGCMcn 独立制作的第三方修改版本。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，**本版本不代表 PCL 官方发布，不是官方发行版**。完整声明见 [THIRD_PARTY_NOTICE.md](THIRD_PARTY_NOTICE.md)。
+> **第三方版本声明：** 本项目由 LGCMcn 基于 PCL 公开源码独立修改。原项目作者仍为 **PCL 官方（龙腾猫跃及原项目贡献者）**。第三方修改与原作者及 PCL 官方无关，**不代表 PCL 官方发布**。保留原署名与 [LICENCE](LICENCE)，详见 [第三方声明](THIRD_PARTY_NOTICE.md)。
 
-基于 PCL 公开源码独立修改的第三方版本，恢复 Minecraft 下载入口，并将可替代的服务依赖改为本地配置。本版本与 PCL 官方无隶属关系。
+原作者：[龙腾猫跃](https://github.com/LTCatt) · [赞助原作者](https://meloong.com/afd/a/LTCat) · [原项目](https://github.com/Meloong-Git/PCL)。
 
-原作者：[龙腾猫跃](https://github.com/LTCatt) · [赞助原作者](https://meloong.com/afd/a/LTCat) · [原项目](https://github.com/Meloong-Git/PCL)。保留原许可、署名和正版购买劝导。
+## 版本与下载
 
-## PCL3 Download 修复版 · 宣传与实测
+当前第三方版本：**v1.2.0**，基于公开源码版本 **2.99.0.0**；这两种版本号分别表示第三方维护版本和上游源码版本。
 
-游戏下载入口恢复，Mod 搜索、文件下载实际演示！**PCL3 Download 修复版**基于 PCL 公开源码独立修改，提供可下载的 Windows 运行包与完整源码。约 90 秒演示带你看 Minecraft 版本选择、Modrinth 搜索和 Sodium 文件下载。
+- [GitHub 最新发行版](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest)：运行包 `PCL.DownloadFix.Windows-x64.zip`，完整源码 `PCL.DownloadFix.Source.zip`。
+- [NAS 备用下载](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce)：帮助新手获取文件和改善下载体验。NAS 由维护者手动同步，版本以 GitHub 为准；请核对同一发行版的 `SHA256SUMS.txt`。
+- 适用于 64 位 Windows，需要 .NET Framework 4.8。解压运行时保留 EXE 旁的配置与“组件”文件夹。
 
-**点击下方播放器即可在本页观看，无需下载或跳转网页。** 如无声音，点击播放器的喇叭按钮开启声音。
+| 第三方版本 | 内容 | 状态 |
+| --- | --- | --- |
+| v1.0.0 | Minecraft／Mod 下载修复、本地服务配置、EasyTier 组件 | 历史版本 |
+| v1.1.0 | 曾提供主题换色 | 已撤回；Windows 主题表现不符合上游指南，不再分发 |
+| v1.2.0 | 固定蓝色、多账号、微软认证修复、GitHub／FTB 目录、凭据保护 | 当前版本 |
 
-https://github.com/user-attachments/assets/b05d03ac-7768-40b5-be95-86de5509e98a
+## 下载流程演示
 
-[下载运行版](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest) · [NAS 备用下载（方便新手获取文件）](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce) · [视频简介与章节](docs/promo.md)
+以下视频展示已有下载流程，不代表已完成微软登录或新版全部功能验收。
 
-视频使用实际启动器录屏、AI 配音和 3D 动画。原作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）；第三方修改与原作者无关，**不代表 PCL 官方发布**。配置要求与功能边界请继续阅读下方说明。
+https://github.com/user-attachments/assets/038b78dc-8733-42c9-af97-6c9f67c0e2af
 
-## 下载运行版
+## 本次功能
 
-前往 [最新 Release](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest)，下载 **`PCL.DownloadFix.Windows-x64.zip`**，完整解压后运行其中的 EXE。请保留旁边的 `.exe.config`、JSON 配置及“组件”文件夹。
+- **遵循上游指南**：Windows 界面固定蓝色，移除免费主题换色及类似赞助主题的表现；保留原有背景图片、背景音乐、标题栏和自定义主页。
+- **第三方版本标识**：主页标题栏与关于页显示第三方身份及 v1.2.0；原作者署名、赞助链接和 Minecraft 正版购买劝导保留。
+- **微软登录代码修复**：设备授权、令牌轮询和刷新使用一致的微软端点，遵循轮询间隔，识别应用未获接入许可等错误。**仍需本项目自己的 Client ID 与 Minecraft API 授权，目前尚未完成真实账号登录验收。**
+- **微软多账号管理**：保存多个账号，按 Minecraft UUID 区分，支持切换、添加和单独移除本机记录；令牌使用当前 Windows 用户加密。
+- **资源来源**：Modrinth 可直接搜索下载；CurseForge 需维护者申请 Key；新增无需 Key 的 GitHub 发布目录及 FTB 官方整合包目录。
+- GitHub 目录支持项目搜索、作者仓库定位和下载 JAR／ZIP／MRPACK，校对大小及服务端提供的 SHA256，不自动运行下载文件。FTB 目录支持搜索和官方安装入口，**尚未实现 FTB 包自动安装**。
+- 保留此前服务配置、整合包导出、新闻替代与联机改动。带账号凭据的请求不使用公共磁盘缓存，跨站重定向不会转发 API Key。
 
-**新手／小白下载加速：** [我的世界 PCL3 Download 修复 · NAS 下载入口](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce)。这是 LGCMcn 提供的 NAS 备用下载，主要帮助新手方便下载，为 GitHub 下载缓慢的用户提供备用选择。NAS 由维护者手动同步，可能晚于 GitHub；本次新版请以 GitHub Release 为准，下载后可使用同一 Release 的 `SHA256SUMS.txt` 核对版本与文件。
+## 源码与实现
 
-- 系统：64 位 Windows，.NET Framework 4.8。
-- `PCL.DownloadFix.Source.zip` 是包含固定版本 MeloongCore 的完整源码包。
-- `SHA256SUMS.txt` 用于检查下载文件的 SHA256。
+本项目当前运行代码、构建脚本、测试与依赖源码均可查看和自行构建。源码公开仍受原 [LICENCE](LICENCE) 约束，并不表示可以任意解除上游限制。
 
-## 本次修改
+| 部分 | 语言／技术 | 实现方式 |
+| --- | --- | --- |
+| 启动器界面与主体 | VB.NET、WPF／XAML、.NET Framework 4.8 | 事件驱动界面、原有 Minecraft 启动及下载流程 |
+| 辅助组件 | C# 13、MeloongCore、PCLCS | 公共文件、网络、界面与平台能力 |
+| 微软账号 | OAuth 2.0 Device Authorization | 浏览器授权、轮询、刷新、Xbox Live／XSTS／Minecraft 正版链路 |
+| 多账号存储 | Windows DPAPI CurrentUser | UUID 与 Client ID 分组，凭据绑定 Windows 用户；旧设置兼容读取，新写入加密 |
+| 下载与资源目录 | HTTPS REST、JSON | Modrinth／CurseForge 原搜索；GitHub、FTB 独立目录 |
+| 文件校验 | 文件大小、SHA1／SHA256 | 根据来源元数据核对；哈希校验不能证明第三方内容无恶意 |
+| 构建与复核 | PowerShell、Python、GitHub Actions | 构建、加载实际程序集测试、打包与发行文件哈希 |
 
-- 新增 14 个第三方独立免费配色预设和自由配色；色相、饱和度、亮度与渐变可直接调整，无需赞助码。
-- 恢复 Minecraft 下载、整合包安装等原本受限制的入口，保留官方源和 BMCLAPI 切换。
-- Modrinth 默认使用官方 API；支持自行配置 CurseForge API Key 和兼容镜像。
-- 新增 `PCL.Services.json` 本地配置，支持微软 Client ID、CurseForge Key 和服务地址；不在源码或构建中嵌入个人凭据。
-- 联机读取本地配置，补齐 EasyTier 解压和 CLI 调用，恢复联机入口；x64 运行包附带校验哈希的官方组件。
-- 导出整合包携带当前修复版，不导出 CurseForge Key。
-- Minecraft 新闻预设改为官方版本信息和官方新闻链接；更新入口指向本仓库 Releases。
+具体调用链、计算与边界见 [项目分析](docs/analysis.md)，申请与填写步骤见 [使用说明](docs/usage.md)。
 
-## 使用前需要知道
+## 安全与源码检查声明
 
-**本版本不保证与 PCL 官方正式版所有功能完全一致。** 免费配色为第三方独立实现，官方赞助等级保持 None；未重建官方私有特效、赞助权益或原自动更新。
+维护者 LGCMcn 承诺：**本第三方版本不主动植入病毒、木马、挖矿程序、盗号功能或隐蔽后门。源码公开，欢迎随时检查和复核。**
 
-微软正版登录需要自己的、具备相关权限的公共客户端应用 Client ID。CurseForge 官方接口和文件下载需要自己的 API Key；原 MCIM 镜像在本次验证中已返回停服提示，因此最终版默认不使用该镜像。没有 Key 时可使用 Modrinth 来源。
+维护者表态：**“藏毒作者迪克爆炸。”**
 
-本次构建通过 **72 项检查**，其中 43 项覆盖免费配色、设置刷新及真实 WPF 控件。先前下载修复发布版的 34 项检查验证了 Modrinth 搜索、启动器自身下载引擎下载 Mod 和 Minecraft 客户端文件，以及大小和 SHA1 校验。界面启动与 EasyTier 本机两个节点连接也通过验证。完整游戏启动、全部加载器安装和跨电脑公网联机尚未完成验收。
+声明属于维护者对本项目的安全承诺，不构成对任意电脑环境、第三方 Mod、下载站或未来依赖的绝对安全保证。请从本仓库发行页获取文件，核对源码提交和 SHA256。安全检查范围、凭据保护与剩余风险见 [使用说明](docs/usage.md#安全风险与保护范围)。
 
-配置步骤、服务状态和验证边界：
+## 构建与测试
 
-- [使用说明](docs/usage.md)
-- [项目分析与验证](docs/analysis.md)
-- [原项目 README](docs/UPSTREAM_README.md)
-
-## 从源码构建
-
-需要 .NET SDK 9、Visual Studio 的 .NET 桌面构建工具，以及 .NET Framework 4.8 Targeting Pack。
+需要 .NET SDK 9、Visual Studio 的 .NET 桌面构建工具和 .NET Framework 4.8 Targeting Pack。
 
 ```powershell
-git clone --recurse-submodules https://github.com/LGCMcn/PCL3_ModDownloadFix.git
+git clone https://github.com/LGCMcn/PCL3_ModDownloadFix.git
 cd PCL3_ModDownloadFix
 .\build.ps1 -Configuration Release
 .\tests\run-smoke-tests.ps1
+# 可选：实际查询与下载校验
+.\tests\run-smoke-tests.ps1 -Network -ExtraNetwork
 ```
 
-输出：`Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe`。将配置模板复制到 EXE 旁后使用，或使用 Release 中已打包的运行版。
+输出：`Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe`。当前发行的具体测试结果与源码提交号见 Release。微软真实账号登录、全部加载器、完整游戏启动和跨电脑公网联机仍有未完成验收的范围。
 
-请勿将个人 `PCL.Services.json`、Key、账号缓存或游戏目录提交到仓库。许可与二次创作要求见 [LICENCE](LICENCE)。
+[使用说明](docs/usage.md) · [实现与验证](docs/analysis.md) · [演示说明](docs/promo.md) · [原项目 README](docs/UPSTREAM_README.md)

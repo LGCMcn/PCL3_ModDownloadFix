@@ -21,6 +21,7 @@
         <local:MyComboBox x:Name="ComboAccounts" Grid.Row="2" />
         <local:MyButton Text="登录" x:Name="BtnLogin" ColorType="Highlight" 
                         Height="28" Width="60" Margin="10,0,0,0" Grid.Row="2" Grid.Column="1" />
+        <local:MyTextButton x:Name="BtnAccounts" Text="管理已保存的微软账号" HorizontalAlignment="Center" Grid.Row="3" Grid.ColumnSpan="2" Margin="0,12,0,0" />
         <Grid Grid.Row="4" Grid.ColumnSpan="2" Opacity="0.3" Margin="2,30,2,0" HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />

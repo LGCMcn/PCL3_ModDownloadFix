@@ -256,7 +256,8 @@ Retry:
                 CancelToken?.Dispose() : CancelToken = New CancellationTokenSource(Timeout)
                 Dim ClonedRequest As HttpRequestMessage = Request.Clone() 'HttpRequestMessage 只能发送一次，重试时需要克隆一个新的
                 Try
-                    Response = RequestClient.SendAsync(ClonedRequest, HttpCompletionOption.ResponseHeadersRead, CancelToken.Token).GetResultWithTimeout(CancelToken, Timeout)
+                    Response = If(NeedsPrivateTransport(ClonedRequest), SendPrivateRequest(ClonedRequest, CancelToken.Token),
+                        RequestClient.SendAsync(ClonedRequest, HttpCompletionOption.ResponseHeadersRead, CancelToken.Token)).GetResultWithTimeout(CancelToken, Timeout)
                 Finally
                     ClonedRequest.Dispose()
                 End Try
@@ -296,6 +297,29 @@ Retry:
     End Function
     Private RequestClient As HttpClient = Nothing
     Private RequestClientLock As New Object
+    Private ReadOnly PrivateClient As New HttpClient(New HttpClientHandler With {
+        .AllowAutoRedirect = False, .UseCookies = False,
+        .AutomaticDecompression = DecompressionMethods.Deflate Or DecompressionMethods.GZip})
+    Private Async Function SendPrivateRequest(Original As HttpRequestMessage, Token As CancellationToken) As Task(Of HttpResponseMessage)
+        Dim Current = Original
+        Try
+            For Hop = 0 To 7
+                Dim Response = Await PrivateClient.SendAsync(Current, HttpCompletionOption.ResponseHeadersRead, Token).ConfigureAwait(False)
+                Dim Code = CInt(Response.StatusCode)
+                If Code < 300 OrElse Code >= 400 OrElse Response.Headers.Location Is Nothing Then Return Response
+                Try
+                    Dim NextRequest = SafeRedirectGet(Current, New Uri(Current.RequestUri, Response.Headers.Location))
+                    If Current IsNot Original Then Current.Dispose()
+                    Current = NextRequest
+                Finally
+                    Response.Dispose()
+                End Try
+            Next
+            Throw New HttpRequestException("重定向次数过多，已停止请求。")
+        Finally
+            If Current IsNot Original Then Current.Dispose()
+        End Try
+    End Function
 
 #End Region
 
@@ -916,7 +940,8 @@ StartThread:
                 CancelToken = New CancellationTokenSource(Timeout)
                 If Not Th.IsFirstThread Then HttpRequest.Headers.Range = New Headers.RangeHeaderValue(Th.DownloadStart, Nothing)
                 Dim ContentLength As Long = 0
-                Response = ThreadClient.SendAsync(HttpRequest, HttpCompletionOption.ResponseHeadersRead, CancelToken.Token).GetResultWithTimeout(CancelToken, Timeout)
+                Response = If(NeedsPrivateTransport(HttpRequest), SendPrivateRequest(HttpRequest, CancelToken.Token),
+                    ThreadClient.SendAsync(HttpRequest, HttpCompletionOption.ResponseHeadersRead, CancelToken.Token)).GetResultWithTimeout(CancelToken, Timeout)
                 If Not Response.IsSuccessStatusCode Then '状态码检查
                     Throw New HttpRequestCodeException($"错误码 {Response.StatusCode} ({CInt(Response.StatusCode)})，{Th.Source.Url}", Response.StatusCode, Nothing)
                 End If
@@ -1915,19 +1940,7 @@ FinishExCatch:
     ''' </summary>
     Public Sub ShouldValidateSslCertificateOnLogin(Enabled As Boolean)
         ServicePointManager.ServerCertificateValidationCallback =
-        Function(Sender, Certificate, Chain, Failure)
-            Dim Request As HttpWebRequest = TryCast(Sender, HttpWebRequest)
-            If Failure = Net.Security.SslPolicyErrors.None Then Return True '已通过验证
-            '基于 #3018 和 #5879，只在访问正版登录 API 时跳过证书验证
-            Logger.Warn($"未通过 SSL 证书验证（{Failure}），提供的证书为 {Certificate?.Subject}，URL：{Request?.Address}")
-            If Request Is Nothing Then
-                Return Not Enabled
-            ElseIf Request.Address.Host.Contains("xboxlive") OrElse Request.Address.Host.Contains("minecraftservices") Then
-                Return Not Enabled '根据设置决定是否忽略错误
-            Else
-                Return False
-            End If
-        End Function
+            Function(Sender, Certificate, Chain, Failure) Failure = Net.Security.SslPolicyErrors.None
     End Sub
 
 End Module

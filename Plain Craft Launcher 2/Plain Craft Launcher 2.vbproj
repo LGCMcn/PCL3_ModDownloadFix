@@ -162,6 +162,7 @@
     </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
@@ -259,6 +260,10 @@
     <Compile Include="Modules\ModSecret.vb" />
     <Compile Include="Modules\ModServices.vb" />
     <Compile Include="Modules\ModPersonalization.vb" />
+    <Compile Include="Modules\ModMicrosoftAuth.vb" />
+    <Compile Include="Modules\ModAccounts.vb" />
+    <Compile Include="Modules\ModExtraSources.vb" />
+    <Compile Include="Modules\ModServiceSetup.vb" />
     <Compile Include="Pages\PageDownload\Resource\PageResource.xaml.vb">
       <DependentUpon>PageResource.xaml</DependentUpon>
     </Compile>

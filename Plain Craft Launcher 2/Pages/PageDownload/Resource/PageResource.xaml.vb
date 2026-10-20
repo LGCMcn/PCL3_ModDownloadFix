@@ -2,6 +2,16 @@ Imports System.Windows.Markup
 
 <ContentProperty("SearchTags")>
 Public Class PageResource
+    Private Sub BtnGitHubSource_Click() Handles BtnGitHubSource.Click
+        OpenExtraSources("GitHub", TextSearchName.Text)
+    End Sub
+    Private Sub BtnFtbSource_Click() Handles BtnFtbSource.Click
+        OpenExtraSources("FTB", TextSearchName.Text)
+    End Sub
+    Private Sub BtnSourceSetup_Click() Handles BtnSourceSetup.Click
+        OpenServiceSetup()
+    End Sub
+
 
 #Region "属性"
 
@@ -77,6 +87,7 @@ Public Class PageResource
     Public Loader As LoaderTask(Of ResourceSearcher.SearchRequest, Integer) = ResourceSearcher.GetLoader(AddressOf LoaderInput)
 
     Private Sub PageResource_Loaded(sender As Object, e As EventArgs) Handles Me.Loaded
+        LabSourceStatus.Text = If(IsCurseForgeReady(), "Modrinth / CurseForge 已接入；也可使用下方 GitHub 与 FTB 目录。", "Modrinth 可直接使用；CurseForge 等待维护者申请 Key。GitHub 与 FTB 目录无需 Key。")
         Static IsFirstLoaded As Boolean = False
         '不知道从 Initialized 改成 Loaded 会不会有问题，但用 Initialized 会导致初始的筛选器修改被覆盖回默认值
         If TargetInstance IsNot Nothing Then
@@ -128,6 +139,7 @@ Public Class PageResource
             .Tag = ComboSearchTag.SelectedItem.Tag
             .ModLoaders = If(PageType = ResourceTypes.Mod, Val(ComboSearchLoader.SelectedItem.Tag), ModLoaders.None)
             .Sources = CType(Val(ComboSearchSource.SelectedItem.Tag), ResourcePlatforms)
+            If CInt(.Sources) = 3 AndAlso Not IsCurseForgeReady() Then .Sources = ResourcePlatforms.Modrinth
         End With
         Return Request
     End Function

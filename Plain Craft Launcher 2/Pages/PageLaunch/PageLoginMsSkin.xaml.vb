@@ -1,4 +1,7 @@
 Public Class PageLoginMsSkin
+    Private Sub BtnAccounts_Click(sender As Object, e As RoutedEventArgs)
+        OpenAccountManager()
+    End Sub
 
     Public Sub New()
         InitializeComponent()
