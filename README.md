@@ -6,6 +6,16 @@
 
 原作者：[龙腾猫跃](https://github.com/LTCatt) · [赞助原作者](https://meloong.com/afd/a/LTCat) · [原项目](https://github.com/Meloong-Git/PCL)。保留原许可、署名和正版购买劝导。
 
+## PCL3 Download 修复版 · 宣传与实测
+
+游戏下载入口恢复，Mod 搜索、文件下载实际演示！**PCL3 Download 修复版**基于 PCL 公开源码独立修改，提供可下载的 Windows 运行包与完整源码。约 90 秒演示带你看 Minecraft 版本选择、Modrinth 搜索和 Sodium 文件下载。
+
+[![PCL3 Download 修复版宣传封面：第三方下载修复，游戏下载入口恢复与 Modrinth 实测演示](docs/media/pcl3-downloadfix-promo.jpg)](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/download/downloadfix-personalization-2026.10.20/PCL3.DownloadFix.Promo.1080p.mp4)
+
+**[▶ 打开／下载 1080p 演示视频](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/download/downloadfix-personalization-2026.10.20/PCL3.DownloadFix.Promo.1080p.mp4)** · [下载运行版](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest) · [NAS 备用下载（方便新手获取文件）](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce) · [视频简介与章节](docs/promo.md)
+
+视频使用实际启动器录屏、AI 配音和 3D 动画。原作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）；第三方修改与原作者无关，**不代表 PCL 官方发布**。配置要求与功能边界请继续阅读下方说明。
+
 ## 下载运行版
 
 前往 [最新 Release](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest)，下载 **`PCL.DownloadFix.Windows-x64.zip`**，完整解压后运行其中的 EXE。请保留旁边的 `.exe.config`、JSON 配置及“组件”文件夹。
