@@ -10,6 +10,8 @@
 
 前往 [最新 Release](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest)，下载 **`PCL.DownloadFix.Windows-x64.zip`**，完整解压后运行其中的 EXE。请保留旁边的 `.exe.config`、JSON 配置及“组件”文件夹。
 
+**新手／小白下载加速：** [我的世界 PCL3 Download 修复 · NAS 下载入口](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce)。这是 LGCMcn 提供的 NAS 备用下载，分享内容与 GitHub 已发布版本一致，主要为了帮助新手更方便地获取文件，并为 GitHub 下载缓慢的用户提供加速下载选择。GitHub 访问不便时，可以尝试这个入口。
+
 - 系统：64 位 Windows，.NET Framework 4.8。
 - `PCL.DownloadFix.Source.zip` 是包含固定版本 MeloongCore 的完整源码包。
 - `SHA256SUMS.txt` 用于检查下载文件的 SHA256。
