@@ -3,6 +3,35 @@
 <ContentProperty("Inlines")>
 Public Class MyRadioButton
 
+    Protected Overrides Function OnCreateAutomationPeer() As System.Windows.Automation.Peers.AutomationPeer
+        If UseSelectionIndicator Then Return New NavigationButtonPeer(Me)
+        Return MyBase.OnCreateAutomationPeer()
+    End Function
+
+    Private Class NavigationButtonPeer
+        Inherits System.Windows.Automation.Peers.FrameworkElementAutomationPeer
+        Implements System.Windows.Automation.Provider.IInvokeProvider
+
+        Public Sub New(Button As MyRadioButton)
+            MyBase.New(Button)
+        End Sub
+        Protected Overrides Function GetNameCore() As String
+            Return CType(Owner, MyRadioButton).Text
+        End Function
+        Protected Overrides Function GetAutomationControlTypeCore() As System.Windows.Automation.Peers.AutomationControlType
+            Return System.Windows.Automation.Peers.AutomationControlType.Button
+        End Function
+        Public Overrides Function GetPattern(PatternInterface As System.Windows.Automation.Peers.PatternInterface) As Object
+            If PatternInterface = System.Windows.Automation.Peers.PatternInterface.Invoke Then Return Me
+            Return MyBase.GetPattern(PatternInterface)
+        End Function
+        Public Sub Invoke() Implements System.Windows.Automation.Provider.IInvokeProvider.Invoke
+            Dim Button = CType(Owner, MyRadioButton)
+            If Not Button.IsEnabled Then Throw New System.Windows.Automation.ElementNotEnabledException()
+            Button.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, New Action(Sub() Button.SetChecked(True, True, True)))
+        End Sub
+    End Class
+
     '基础
 
     Public Uuid As Integer = GetUuid()
@@ -171,13 +200,8 @@ Public Class MyRadioButton
         Try
             If UseSelectionIndicator AndAlso ColorType = ColorState.White Then
                 AniStop("MyRadioButton Checked " & Uuid) : AniStop("MyRadioButton Color " & Uuid)
-                Background = If(Not Checked AndAlso IsMouseOver, New SolidColorBrush(Color.FromArgb(25, 255, 255, 255)), Brushes.Transparent)
-                If Checked Then
-                    ShapeLogo.SetResourceReference(Shapes.Path.FillProperty, "ColorBrush3")
-                    LabText.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush3")
-                Else
-                    ShapeLogo.Fill = Brushes.White : LabText.Foreground = Brushes.White
-                End If
+                Background = Brushes.Transparent
+                ShapeLogo.Fill = Brushes.White : LabText.Foreground = Brushes.White
                 Return
             End If
             If IsLoaded AndAlso AniControlEnabled = 0 AndAlso Not False.Equals(e) Then '防止默认属性变更触发动画，若强制不执行动画，则 e 为 False

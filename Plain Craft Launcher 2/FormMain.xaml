@@ -4,7 +4,7 @@
     xmlns:local="clr-namespace:PCL"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
     x:Name="WindMain" x:Class="FormMain" Style="{StaticResource MyWindow}"
-    AllowDrop="True" Topmost="True" Title="Plain Craft Launcher (PCL) LGCMcn 下载修复版 v1.2.2" AllowsTransparency="True" MinHeight="470" MinWidth="810"
+    AllowDrop="True" Topmost="True" Title="Plain Craft Launcher (PCL) LGCMcn 下载修复版 v1.2.3" AllowsTransparency="True" MinHeight="470" MinWidth="810"
     ScrollViewer.VerticalScrollBarVisibility="Disabled" Icon="/Plain Craft Launcher 2;component/Images/icon.ico" WindowStyle="None" 
     ResizeMode="CanMinimize" Background="{x:Null}" d:DesignWidth="870" d:DesignHeight="520" Width="850" Height="500" 
     RenderTransformOrigin="0.5,0.5">
@@ -117,11 +117,10 @@
                         </Grid.ColumnDefinitions>
                         <Path x:Name="ShapeTitleLogo" Data="M26,29 v-25 h6 a7,7 180 0 1 0,14 h-6 M62.5,6.5 a10,11.5 180 1 0 0,18 M71,2.5 v24.5 h13.5" SnapsToDevicePixels="False" UseLayoutRounding="False" IsHitTestVisible="False" HorizontalAlignment="Left" Margin="19,15.5,0,15.5" Stretch="fill" Stroke="White" StrokeThickness="2.2" Width="39" />
                         <Path x:Name="ThirdPartyRomanMark" Data="M0,0 V16 M5,0 V16 M10,0 V16" Stroke="White" StrokeThickness="1.6" Width="10" Height="16" Stretch="Fill" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="72,0,0,0" IsHitTestVisible="False" Visibility="{Binding Visibility, ElementName=ShapeTitleLogo}" />
-                        <Border x:Name="ThirdPartyVersionBadge" Margin="104,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#38FFFFFF" CornerRadius="3" IsHitTestVisible="False"><TextBlock Text="第三方版本 v1.2.2" Foreground="White" FontSize="10" Margin="5,3" /></Border>
+                        <Border x:Name="ThirdPartyVersionBadge" Margin="104,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#38FFFFFF" CornerRadius="3" IsHitTestVisible="False"><TextBlock Text="第三方版本 v1.2.3" Foreground="White" FontSize="10" Margin="5,3" /></Border>
                         <TextBlock x:Name="LabTitleLogo" Visibility="Collapsed" SnapsToDevicePixels="False" UseLayoutRounding="False" IsHitTestVisible="False" HorizontalAlignment="Left" Margin="18,0,0,0" Foreground="White" FontSize="17" VerticalAlignment="Center" />
                         <local:MyImage x:Name="ImageTitleLogo" SnapsToDevicePixels="False" UseLayoutRounding="False" IsHitTestVisible="False" HorizontalAlignment="Left" Margin="7" VerticalAlignment="Center" Visibility="Collapsed" />
                         <Grid Grid.Column="1" x:Name="PanTitleTabs" VerticalAlignment="Center" Height="27" Margin="13,0">
-                            <Border x:Name="TitleSelection" Background="White" CornerRadius="13.5" Height="27" Width="0" HorizontalAlignment="Left" IsHitTestVisible="False"><Border.RenderTransform><TranslateTransform /></Border.RenderTransform></Border>
                         <StackPanel x:Name="PanTitleSelect" HorizontalAlignment="Left" Height="27" VerticalAlignment="Center" Orientation="Horizontal" Margin="0">
                             <local:MyRadioButton UseSelectionIndicator="True" x:Name="BtnTitleSelect0" Text="启动" Tag="0" Margin="6,0" Checked="True" Padding="2,0"
                                              LogoScale="0.9" Logo="M52.1,164.5c-1.4,0-3.1-0.5-4.2-1.3c-2.6-1.7-4-4.2-4-7V43.8c0-2.9,1.6-5.8,4.1-7c1.2-0.8,2.7-1.2,4.1-1.2c1.5,0,2.9,0.4,4.2,1.2L153.1,93c0,0,0.1,0,0.1,0.1c2.6,1.7,4,4.2,4,7c0,3-1.7,5.8-4.2,7.1l-96.8,56.2C55.1,164,53.5,164.5,52.1,164.5z M60.4,142.1l72.1-42.1L60.4,58.2V142.1z" />
@@ -134,6 +133,7 @@
                             <local:MyRadioButton UseSelectionIndicator="True" x:Name="BtnTitleSelect4" Text="更多" Tag="4" Margin="6,0" Padding="2,0"
                                              LogoScale="0.93" Logo="M364 0h-273C40 0 0 40 0 91v273C0 414 40 455 91 455h273C414 455 455 414 455 364V91C455 40 414 0 364 0zM341 341H113V113h227v227zM933 0h-273C609 0 568 40 568 91v273c0 50 40 91 91 91h273C983 455 1024 414 1024 364V91c0-50-40-91-90-91zM910 341h-227V113h227v227zM364 568h-273C40 568 0 609 0 659v273c0 50 40 91 91 91h273C414 1024 455 983 455 932v-273C455 609 414 568 364 568zM341 910H113v-227h227v227zM933 568h-273c-50 0-91 40-91 91v273c0 50 40 91 91 91h273c50 0 90-40 90-91v-273c0-50-40-90-90-90zM910 910h-227v-227h227v227z"/>
                         </StackPanel>
+                            <local:MyNavigationIndicator x:Name="TitleSelection" Height="27" IsHitTestVisible="False" />
                         </Grid>
                     </Grid>
                     <Grid x:Name="PanTitleInner" Visibility="Collapsed" Margin="-16,0,0,0" Opacity="0" HorizontalAlignment="Left" Width="{Binding ActualWidth, ElementName=PanTitle, Mode=OneWay}">

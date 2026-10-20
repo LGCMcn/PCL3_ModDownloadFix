@@ -162,6 +162,7 @@
     </Reference>
     <Reference Include="UIAutomationClient" />
     <Reference Include="UIAutomationTypes" />
+    <Reference Include="UIAutomationProvider" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Security" />
@@ -249,6 +250,7 @@
     </Compile>
     <Compile Include="Controls\MyScrollBar.vb" />
     <Compile Include="Controls\MyScrollViewer.vb" />
+    <Compile Include="Controls\MyNavigationIndicator.vb" />
     <Compile Include="Controls\MySearchBox.xaml.vb">
       <DependentUpon>MySearchBox.xaml</DependentUpon>
     </Compile>

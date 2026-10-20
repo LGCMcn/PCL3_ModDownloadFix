@@ -3,7 +3,6 @@ Imports System.Windows.Threading
 
 Friend Module ModNavigation
     Private ReadOnly PendingEnterProperty As DependencyProperty = DependencyProperty.RegisterAttached("PendingEnter", GetType(DispatcherOperation), GetType(MyPageRight))
-    Private ReadOnly SelectionMotionProperty As DependencyProperty = DependencyProperty.RegisterAttached("SelectionMotion", GetType(TitleSelectionMotion), GetType(MyPageRight))
 
     Public Sub PrepareNavigationPages()
         If FrmMain Is Nothing Then Return
@@ -86,52 +85,13 @@ Friend Module ModNavigation
         Host.SetValue(PendingEnterProperty, Operation)
     End Sub
 
-    Public Sub MoveTitleSelection(Host As FrameworkElement, Selector As StackPanel, Indicator As Border, Animate As Boolean)
+    Public Sub MoveTitleSelection(Host As FrameworkElement, Selector As StackPanel, Indicator As MyNavigationIndicator, Animate As Boolean)
         Dim Selected = Selector.Children.OfType(Of MyRadioButton)().FirstOrDefault(Function(Item) Item.Checked AndAlso Item.Visibility = Visibility.Visible)
         If Selected Is Nothing Then Indicator.Visibility = Visibility.Collapsed : Return
         If Selected.ActualWidth <= 0 Then Return
         Dim Position = Selected.TranslatePoint(New Point(0, 0), Host)
-        Dim Group = TryCast(Indicator.RenderTransform, TransformGroup)
-        If Group Is Nothing Then
-            Group = New TransformGroup()
-            Group.Children.Add(New ScaleTransform(1, 1)) : Group.Children.Add(New TranslateTransform())
-            Indicator.RenderTransform = Group
-        End If
-        Dim Scale = CType(Group.Children(0), ScaleTransform), Translation = CType(Group.Children(1), TranslateTransform)
-        Dim PreviousX = Translation.X, PreviousWidth = If(Double.IsNaN(Indicator.Width), 0, Indicator.Width * Scale.ScaleX)
-        Dim Previous = TryCast(Host.GetValue(SelectionMotionProperty), TitleSelectionMotion)
-        Previous?.Cancel() : Host.ClearValue(SelectionMotionProperty)
-        Indicator.Width = 78
-        Translation.X = Position.X : Scale.ScaleX = Selected.ActualWidth / 78
         Indicator.Visibility = Visibility.Visible
-        If Not Animate OrElse PreviousWidth <= 0 OrElse Not NavigationMotionEnabled() Then Return
-        Dim Motion As New TitleSelectionMotion(Host, Indicator, Translation, Scale, PreviousX, Position.X, PreviousWidth, Selected.ActualWidth)
-        Host.SetValue(SelectionMotionProperty, Motion)
-        Motion.Begin()
+        Indicator.UpdateInk(Host, Selector)
+        Indicator.SelectTarget(Position.X, Selected.ActualWidth, Animate)
     End Sub
-
-    Private Class TitleSelectionMotion
-        Private ReadOnly Host As FrameworkElement, Indicator As Border, Translation As TranslateTransform
-        Private ReadOnly Glide As DoubleAnimation, Resize As DoubleAnimation
-        Private ReadOnly Scale As ScaleTransform
-        Public Sub New(Owner As FrameworkElement, Capsule As Border, Shift As TranslateTransform, Stretch As ScaleTransform, FromX As Double, ToX As Double, FromWidth As Double, ToWidth As Double)
-            Host = Owner : Indicator = Capsule : Translation = Shift : Scale = Stretch
-            Glide = New DoubleAnimation(FromX, ToX, TimeSpan.FromMilliseconds(190)) With {.EasingFunction = New CubicEase With {.EasingMode = EasingMode.EaseOut}, .FillBehavior = FillBehavior.Stop}
-            Resize = New DoubleAnimation(FromWidth / 78, ToWidth / 78, TimeSpan.FromMilliseconds(190)) With {.EasingFunction = New CubicEase With {.EasingMode = EasingMode.EaseOut}, .FillBehavior = FillBehavior.Stop}
-        End Sub
-        Public Sub Begin()
-            AddHandler Glide.Completed, AddressOf Finished
-            Translation.BeginAnimation(TranslateTransform.XProperty, Glide, HandoffBehavior.SnapshotAndReplace)
-            Scale.BeginAnimation(ScaleTransform.ScaleXProperty, Resize, HandoffBehavior.SnapshotAndReplace)
-        End Sub
-        Public Sub Cancel()
-            RemoveHandler Glide.Completed, AddressOf Finished
-            Translation.BeginAnimation(TranslateTransform.XProperty, Nothing)
-            Scale.BeginAnimation(ScaleTransform.ScaleXProperty, Nothing)
-        End Sub
-        Private Sub Finished(Sender As Object, E As EventArgs)
-            Cancel()
-            If Object.ReferenceEquals(Host.GetValue(SelectionMotionProperty), Me) Then Host.ClearValue(SelectionMotionProperty)
-        End Sub
-    End Class
 End Module

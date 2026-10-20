@@ -10,6 +10,14 @@ using Newtonsoft.Json.Linq;
 class SmokeTests {
     static Assembly app;
     static int passed;
+    static void InitializeTestResources(System.Windows.Application application) {
+        app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+        // .NET Framework WPF rejects a null StartupUri through its public setter.
+        // Clear the deferred URI as well as detaching the production Startup event.
+        var field=typeof(System.Windows.Application).GetField("_startupUri",BindingFlags.Instance|BindingFlags.NonPublic);
+        if(field==null)throw new InvalidOperationException("Cannot isolate the WPF startup URI.");
+        field.SetValue(application,null);
+    }
     static object Call(string type, string method, params object[] supplied) {
         var target = app.GetType("PCL." + type, true).GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             .First(m => m.Name == method && !m.ContainsGenericParameters && m.GetParameters().Length >= supplied.Length &&
@@ -53,20 +61,20 @@ class SmokeTests {
             var wpf=Assembly.Load("MeloongCore.Wpf");
             wpf.GetType("MeloongCore.Wpf.Main").GetMethod("Init").Invoke(null,null);
             if(args.Contains("--personalization")) {
-                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                InitializeTestResources(application);
                 Personalization();
                 Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
             }
             if(args.Contains("--v5")) {
-                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                InitializeTestResources(application);
                 V5Checks(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
             }
             if(args.Contains("--visual")) {
-                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                InitializeTestResources(application);
                 VisualChecks();Console.WriteLine("RESULT: "+passed+" passed");Environment.Exit(0);
             }
             if(args.Contains("--interaction")) {
-                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                InitializeTestResources(application);
                 InteractionChecks();Console.WriteLine("RESULT: "+passed+" passed");Environment.Exit(0);
             }
             if(args.Contains("--extra-network")) {
@@ -185,6 +193,7 @@ class SmokeTests {
         CapturePage(viewer,350,240,"smooth-scroll-preview.png");
     }
     static void HeaderChecks() {
+        Check(!System.Windows.Application.Current.Windows.Cast<System.Windows.Window>().Any(window=>window.GetType().Name=="FormMain"),"test resources never auto-launch the production startup window");
         var doc=System.Xml.Linq.XDocument.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"FormMain.preview.xaml"));
         System.Xml.Linq.XNamespace x="http://schemas.microsoft.com/winfx/2006/xaml";
         var source=new System.Xml.Linq.XElement(doc.Descendants().First(e=>(string)e.Attribute(x+"Name")=="PanTitle"));
@@ -194,7 +203,7 @@ class SmokeTests {
         var header=(System.Windows.Controls.Grid)System.Windows.Markup.XamlReader.Parse(source.ToString());
         var preview=new System.Windows.Window{Content=new MeasureProbe{Child=header},Width=1280,Height=48,WindowStyle=System.Windows.WindowStyle.None,ShowInTaskbar=false,ShowActivated=false,Left=40,Top=40};preview.Show();Pump(80);
         var tabs=(System.Windows.FrameworkElement)header.FindName("PanTitleTabs");var selector=(System.Windows.Controls.StackPanel)header.FindName("PanTitleSelect");
-        var indicator=(System.Windows.Controls.Border)header.FindName("TitleSelection");var badge=(System.Windows.FrameworkElement)header.FindName("ThirdPartyVersionBadge");
+        var indicator=(System.Windows.FrameworkElement)header.FindName("TitleSelection");var badge=(System.Windows.FrameworkElement)header.FindName("ThirdPartyVersionBadge");
         var mark=(System.Windows.FrameworkElement)header.FindName("ThirdPartyRomanMark");
         foreach(int width in new[]{774,950,1280}) {
             preview.Width=width;header.Width=width;header.Height=48;header.Measure(new System.Windows.Size(width,48));header.Arrange(new System.Windows.Rect(0,0,width,48));header.UpdateLayout();
@@ -208,18 +217,45 @@ class SmokeTests {
         var layoutProbe=(MeasureProbe)preview.Content;int measuresBefore=layoutProbe.Measures;
         var chosen=selector.Children[4];chosen.GetType().GetMethod("SetChecked").Invoke(chosen,new object[]{true,false,false});
         Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);Pump(40);
-        var transform=(System.Windows.Media.TranslateTransform)((System.Windows.Media.TransformGroup)indicator.RenderTransform).Children[1];
-        double intermediate=transform.X,finish=((System.Windows.FrameworkElement)chosen).TranslatePoint(new System.Windows.Point(0,0),tabs).X;
-
+        var state=ReadIndicatorState(indicator);
+        double intermediate=state[0],finish=((System.Windows.FrameworkElement)chosen).TranslatePoint(new System.Windows.Point(0,0),tabs).X;
         Check(!(bool)Call("ModVisualExperience","NavigationMotionEnabled")||intermediate>0&&intermediate<finish,"top selection capsule moves through intermediate positions");
         for(int i=0;i<25;i++) {
             var button=selector.Children[i%5];button.GetType().GetMethod("SetChecked").Invoke(button,new object[]{true,false,false});
             Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);
         }
-        Pump(300);
+        Pump(300);state=ReadIndicatorState(indicator);
         Check(layoutProbe.Measures-measuresBefore<=2&&!indicator.HasAnimatedProperties,"tab glide avoids per-frame width/layout animation");
-        Check(Math.Abs(transform.X-finish)<1&&!transform.HasAnimatedProperties&&!indicator.HasAnimatedProperties,"rapid tab selection finishes on the latest tab and releases its clock");
-        preview.Close();
+        Check(Math.Abs(state[0]-finish)<1&&state[2]==0&&!indicator.HasAnimatedProperties,"rapid tab selection finishes on the latest tab and releases its clock");
+        var countField=indicator.GetType().GetField("ActiveRenderers");
+        Check((int)countField.GetValue(null)==1,"navigation uses exactly one independent drawing dispatcher");
+        var firstButton=(System.Windows.FrameworkElement)selector.Children[0];
+        var peer=System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(firstButton);
+        Check(peer!=null&&peer.GetName()=="启动"&&peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke)!=null,"navigation exposes a named standard accessibility action");
+        peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke).GetType().GetMethod("Invoke").Invoke(peer,null);Pump(30);
+        Check((bool)firstButton.GetType().GetProperty("Checked").GetValue(firstButton),"accessibility invokes the same navigation selection path");
+        Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);
+        System.Threading.Thread.Sleep(80);
+        var independent=ReadIndicatorStateTask(indicator);
+        bool completedWithoutMainPump=independent.Wait(120);
+        Check(completedWithoutMainPump&&(!(bool)Call("ModVisualExperience","NavigationMotionEnabled")||(independent.Result[0]>6&&independent.Result[0]<finish)),"capsule advances while the main page dispatcher is deliberately blocked");
+        Pump(250);
+        chosen.GetType().GetMethod("SetChecked").Invoke(chosen,new object[]{true,false,false});
+        Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);Pump(80);
+        for(int i=0;i<20;i++)Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,false);
+        Pump(160);state=ReadIndicatorState(indicator);
+        Check(Math.Abs(state[0]-finish)<1&&state[2]==0,"duplicate layout notifications do not restart or snap an active glide");
+        SetNormalPreference("UiNavigationAnimation",false);
+        firstButton.GetType().GetMethod("SetChecked").Invoke(firstButton,new object[]{true,false,false});
+        Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);Pump(30);state=ReadIndicatorState(indicator);
+        Check(Math.Abs(state[0]-6)<1&&state[2]==0,"disabling navigation animation snaps directly without leaving clocks");
+        SetNormalPreference("UiNavigationAnimation",true);
+        for(int i=0;i<3;i++) {
+            preview.Content=null;Pump(100);Check((int)countField.GetValue(null)==0,"unloading navigation shuts down its dispatcher: "+i);
+            preview.Content=layoutProbe;Pump(100);Check((int)countField.GetValue(null)==1,"reloading navigation creates one fresh visual target: "+i);
+        }
+        preview.Close();Pump(150);
+        Check((int)countField.GetValue(null)==0,"closing the header releases the independent drawing thread");
         foreach(var pageType in new[]{"PageSetupUI","PageOtherTest"}) {
             var page=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL."+pageType));
             foreach(var checkbox in Descendants(page).Where(e=>e.GetType().Name=="MyCheckBox")) {
@@ -230,6 +266,12 @@ class SmokeTests {
                 }
             }
         }
+    }
+    static System.Threading.Tasks.Task<double[]> ReadIndicatorStateTask(System.Windows.FrameworkElement indicator) {
+        return (System.Threading.Tasks.Task<double[]>)indicator.GetType().GetMethod("ReadMotionStateAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(indicator,null);
+    }
+    static double[] ReadIndicatorState(System.Windows.FrameworkElement indicator) {
+        var task=ReadIndicatorStateTask(indicator);while(!task.IsCompleted)Pump(5);return task.GetAwaiter().GetResult();
     }
     static System.Collections.Generic.IEnumerable<System.Windows.DependencyObject> Descendants(System.Windows.DependencyObject node) {
         foreach(var item in System.Windows.LogicalTreeHelper.GetChildren(node)) {
@@ -350,12 +392,15 @@ class SmokeTests {
         var references=Enumerable.Range(0,200).Select(i=>MakeGlassProbe()).ToList();
         Pump(100);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
         Check(references.Count(r=>r.IsAlive)<3,"200 glass toggles do not retain discarded visual layers");
-        var error=new System.Windows.Controls.TextBlock{Text="error"};Call("ModVisualExperience","BeginErrorAccent",error);
+        var error=new System.Windows.Controls.TextBlock{Text="error"};
+        var effectHost=new System.Windows.Window{Content=error,Width=160,Height=60,ShowInTaskbar=false,ShowActivated=false,WindowStyle=System.Windows.WindowStyle.None,Left=0,Top=0};
+        effectHost.Show();Pump(25);Call("ModVisualExperience","BeginErrorAccent",error);
         var transform=(System.Windows.Media.TranslateTransform)error.RenderTransform;
         var errors=Enumerable.Range(0,100).Select(i=>MakeErrorProbe()).ToList();
         Pump(800);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
         Check(error.RenderTransform==null&&!transform.HasAnimatedProperties,"error animation removes its completed animation clock and transform");
         Check(errors.Count(r=>r.IsAlive)<3,"100 completed error animations release target controls");
+        effectHost.Content=null;effectHost.Close();
         var samples=(double[])Call("MyOfflineMorphIcon","SpringSamples");
         Check(samples.Length>5&&samples.Length<=90&&samples.Last()==1&&samples.All(v=>!double.IsInfinity(v)&&!double.IsNaN(v)),"offline morph spring is bounded, finite and reaches its final shape");
         var icon=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyOfflineMorphIcon"));
