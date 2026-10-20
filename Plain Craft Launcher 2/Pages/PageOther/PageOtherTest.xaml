@@ -6,7 +6,24 @@
     xmlns:local="clr-namespace:PCL"
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     PanScroll="PanBack">
-    <local:MyScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
-        <TextBlock Text="为便于维护，开源内容中不包含百宝箱功能……" HorizontalAlignment="Center" FontSize="15" Height="30" VerticalAlignment="Center" />
+    <local:MyScrollViewer Background="#F3F7FC" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
+        <StackPanel Margin="25,25,25,20">
+            <local:MyCard Title="当前设备配置" Margin="0,0,0,15">
+                <StackPanel Margin="25,40,25,20">
+                    <TextBlock Text="仅在本机读取，不上传设备信息。点击刷新可更新可用内存和磁盘容量。" TextWrapping="Wrap" Margin="0,0,0,14" />
+                    <TextBox x:Name="TextDeviceInfo" Text="正在读取设备配置…" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" FontSize="14" Margin="0,0,0,16" />
+                    <local:MyButton x:Name="BtnDeviceRefresh" Text="刷新设备配置" Height="35" HorizontalAlignment="Left" Padding="16,0" />
+                </StackPanel>
+            </local:MyCard>
+            <local:MyCard Title="界面效果" Margin="0,0,0,15">
+                <StackPanel Margin="25,40,25,20">
+                    <local:MyCheckBox Text="启用毛玻璃背景（默认开启）" local:SettingService.Key="UiFrostedGlass" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="启用启动动画（下次启动生效）" local:SettingService.Key="UiStartupAnimation" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="启用错误提示动画" local:SettingService.Key="UiErrorAnimation" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="启用图标状态动画（图标始终离线可用）" local:SettingService.Key="UiIconAnimation" Height="24" Margin="0,0,0,14" />
+                    <TextBlock Text="效果保持蓝色主调。尊重系统的动画和高对比度设置；低渲染能力设备自动使用轻量背景。" TextWrapping="Wrap" />
+                </StackPanel>
+            </local:MyCard>
+        </StackPanel>
     </local:MyScrollViewer>
 </local:MyPageRight>

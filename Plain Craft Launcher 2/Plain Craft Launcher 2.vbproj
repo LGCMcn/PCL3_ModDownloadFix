@@ -265,6 +265,9 @@
     <Compile Include="Modules\ModExtraSources.vb" />
     <Compile Include="Modules\ModServiceSetup.vb" />
     <Compile Include="Modules\ModProjectUpdate.vb" />
+    <Compile Include="Modules\ModVisualExperience.vb" />
+    <Compile Include="Modules\ModDeviceInfo.vb" />
+    <Compile Include="Controls\MyOfflineMorphIcon.vb" />
     <Compile Include="Pages\PageDownload\Resource\PageResource.xaml.vb">
       <DependentUpon>PageResource.xaml</DependentUpon>
     </Compile>

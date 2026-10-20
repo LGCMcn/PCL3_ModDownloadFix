@@ -4,7 +4,7 @@
     xmlns:local="clr-namespace:PCL" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
     mc:Ignorable="d" x:Class="PageOtherAbout"
     PanScroll="PanBack" RenderOptions.BitmapScalingMode="LowQuality">
-    <local:MyScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
+    <local:MyScrollViewer Background="#F3F7FC" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
         <StackPanel x:Name="PanMain" Margin="25,10" Grid.IsSharedSizeScope="True">
             <local:MyCard Margin="0,15" Title="关于">
                 <Grid Margin="21,40,21,16">
@@ -43,8 +43,11 @@
                 </Grid>
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="项目版本与更新">
-                <StackPanel Margin="25,37,25,18">
-                    <TextBlock x:Name="TextProjectVersion" Text="正在获取版本信息…" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10" />
+                <StackPanel Margin="25,52,25,20">
+                    <DockPanel Margin="0,0,0,14">
+                        <local:MyOfflineMorphIcon x:Name="IconProjectRelease" State="download" DockPanel.Dock="Left" />
+                    <TextBlock x:Name="TextProjectVersion" Text="正在获取版本信息…" TextWrapping="Wrap" FontWeight="SemiBold" VerticalAlignment="Center" FontSize="14" Margin="12,0,0,0" />
+                    </DockPanel>
                     <TextBox x:Name="TextProjectChanges" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" MaxHeight="230" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
                     <WrapPanel Margin="0,0,0,8">
                         <local:MyButton x:Name="BtnProjectInstall" Text="下载并更新" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6" ColorType="Highlight" IsEnabled="False" />
@@ -54,18 +57,22 @@
                 </StackPanel>
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="第三方修改说明">
-                <TextBlock Margin="25,37,25,15" Text="本版本由 LGCMcn 基于 PCL 公开源码独立修改。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，本版本不代表 PCL 官方发布，不是官方发行版。保留原作者署名；源码：https://github.com/LGCMcn/PCL3_ModDownloadFix" TextWrapping="Wrap" />
+                <TextBlock Margin="25,52,25,20" Text="本版本由 LGCMcn 基于 PCL 公开源码独立修改。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，本版本不代表 PCL 官方发布，不是官方发行版。保留原作者署名，源码与项目入口见下方。" TextWrapping="Wrap" />
             </local:MyCard>
-            <local:MyCard Margin="0,0,0,15" Title="第三方维护者与项目">
-                <StackPanel Margin="25,37,25,18">
+            <local:MyCard Margin="0,0,0,15" Title="LGCMcn · 第三方维护者">
+                <StackPanel Margin="25,52,25,20">
                     <TextBlock Text="LGCMcn" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <TextBlock Text="本分支第三方修改与维护者，负责下载修复、独立服务配置和多账号管理等修改。原项目作者仍为 PCL 官方；本分支不代表 PCL 官方发布。" TextWrapping="Wrap" Margin="0,0,0,14" />
-                    <WrapPanel>
+                    <TextBlock Text="本项目第三方维护者。负责下载修复、独立服务配置、多账号管理与界面体验改进。欢迎通过个人网站、B 站和 GitHub 了解项目进展与使用演示。原项目作者仍为 PCL 官方，本分支不代表官方发布。" TextWrapping="Wrap" Margin="0,0,0,14" />
+                    <UniformGrid Columns="2">
+                        <local:MyButton Text="个人网站 · lgcm.xyz" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6"
+                                        local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://www.lgcm.xyz" />
+                        <local:MyButton Text="B 站个人主页" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6"
+                                        local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://space.bilibili.com/3493082225969704" />
                         <local:MyButton Text="项目首页" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6" ColorType="Highlight"
                                         local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://github.com/LGCMcn/PCL3_ModDownloadFix" />
-                        <local:MyButton Text="GitHub 个人主页" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,0,6"
+                        <local:MyButton Text="GitHub 个人主页" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6"
                                         local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://github.com/LGCMcn" />
-                    </WrapPanel>
+                    </UniformGrid>
                 </StackPanel>
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="特别鸣谢">

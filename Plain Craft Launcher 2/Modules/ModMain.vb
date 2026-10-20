@@ -95,6 +95,7 @@ Public Module ModMain
                         New GradientStop(TargetColor0 * Percent + New MyColor(255, 255, 255) * (1 - Percent), 0),
                         New GradientStop(TargetColor1 * Percent + New MyColor(255, 255, 255) * (1 - Percent), 1)}), 90)
                     NewHintControl.Child = New TextBlock With {.TextTrimming = TextTrimming.CharacterEllipsis, .FontSize = 13, .Text = CurrentHint.Text, .Foreground = New MyColor(255, 255, 255), .Margin = New Thickness(33, 5, 8, 5)}
+                    If CurrentHint.Type = HintType.Red Then PlayErrorAccent(CType(NewHintControl.Child, FrameworkElement))
                     'AddHandler NewHintControl.MouseLeftButtonDown, AddressOf HideAllHint
                     FrmMain.PanHint.Children.Add(NewHintControl)
                     '控件动画

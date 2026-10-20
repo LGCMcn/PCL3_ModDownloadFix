@@ -36,6 +36,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw '动态效果、认证与多账号检查失败。' }
     & (Join-Path $testRoot 'SmokeTests.exe') --updater
     if ($LASTEXITCODE -ne 0) { throw '项目发行版与更新包检查失败。' }
+    & (Join-Path $testRoot 'SmokeTests.exe') --visual
+    if ($LASTEXITCODE -ne 0) { throw '界面效果、设备配置与资源释放检查失败。' }
     if ($ExtraNetwork) {
         & (Join-Path $testRoot 'SmokeTests.exe') --extra-network
         if ($LASTEXITCODE -ne 0) { throw '新增来源的网络检查失败。' }

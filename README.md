@@ -26,6 +26,9 @@ https://github.com/user-attachments/assets/038b78dc-8733-42c9-af97-6c9f67c0e2af
 
 ## 本次功能
 
+- **界面与设备**：默认开启、可自由关闭的毛玻璃背景；启动、错误提示和离线图标动画各有开关，尊重系统动画及高对比度设置。工具箱显示真实本机处理器、内存、显卡及磁盘信息，不上传设备配置。
+- **维护者介绍**：关于页提供 [个人网站](https://www.lgcm.xyz)、[B 站](https://space.bilibili.com/3493082225969704)、[GitHub](https://github.com/LGCMcn) 和本项目首页。
+
 - **项目自动更新**：关于页自动读取本项目最新正式发行版及更新记录，使用 `[ + ]` 和 `[ - ]` 区分增加和修复。点击“下载并更新”后校验 SHA256，退出替换并重新启动，失败时恢复备份；保留个人配置与游戏目录。
 
 - **遵循上游指南**：Windows 界面固定蓝色，移除免费主题换色及类似赞助主题的表现；保留原有背景图片、背景音乐、标题栏和自定义主页。
@@ -48,6 +51,7 @@ https://github.com/user-attachments/assets/038b78dc-8733-42c9-af97-6c9f67c0e2af
 | 多账号存储 | Windows DPAPI CurrentUser | UUID 与 Client ID 分组，凭据绑定 Windows 用户；旧设置兼容读取，新写入加密 |
 | 下载与资源目录 | HTTPS REST、JSON | Modrinth／CurseForge 原搜索；GitHub、FTB 独立目录 |
 | 文件校验 | 文件大小、SHA1／SHA256 | 根据来源元数据核对；哈希校验不能证明第三方内容无恶意 |
+| 离线图标 | 原生 WPF、morphicons 弹簧算法局部移植 | 固定本地线条，半隐式 Euler 积分，图标加载和动画不发网络请求；保留 MIT 许可 |
 | 构建与复核 | PowerShell、Python、GitHub Actions | 构建、加载实际程序集测试、打包与发行文件哈希 |
 
 具体调用链、计算与边界见 [项目分析](docs/analysis.md)，申请与填写步骤见 [使用说明](docs/usage.md)。

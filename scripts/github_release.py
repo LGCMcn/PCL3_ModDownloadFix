@@ -66,6 +66,10 @@ def label_history(client, output, apply):
             f'| 源码提交／目标 | `{release["target_commitish"]}` |\n'
             f'| 发布状态 | {status} |\n| 身份 | LGCMcn 独立第三方修改，不代表 PCL 官方发布 |\n'
             '<!-- /release-version -->\n\n')
+        if '<!-- release-change-summary -->' in body:
+            body = body.split('<!-- /release-change-summary -->', 1)[-1].lstrip()
+        changes = ('[ + ] Minecraft／Mod 下载、本地服务配置与离线联机组件。\n[ - ] 修复原服务不可用时的下载入口和整合包导出配置问题。' if version == '1.0.0' else '[ + ] 曾增加主题换色；此历史版本已撤回，请升级固定蓝色版本。')
+        body = '<!-- release-change-summary -->\n## 更新摘要\n\n'+changes+'\n<!-- /release-change-summary -->\n\n'+body
         patch = dict(name=title, body=header+body)
         if withdrawn:
             patch['draft'] = True  # reversible withdrawal; retains version history and files for the owner

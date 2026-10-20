@@ -137,6 +137,10 @@ Public Class Settings
         New Setting("UiLauncherThemeHide", "0|1|2|3|4", Source:=Sources.Registry, Encrypted:=True),
         New Setting("UiLauncherThemeHide2", "0|1|2|3|4", Source:=Sources.Registry, Encrypted:=True),
         New Setting("UiLauncherLogo", True),
+        New Setting("UiFrostedGlass", True, OnChanged:=Sub() ApplyVisualExperience()),
+        New Setting("UiStartupAnimation", True),
+        New Setting("UiErrorAnimation", True),
+        New Setting("UiIconAnimation", True),
         New Setting("UiLauncherEmail", False),
         New Setting("UiBackgroundColorful", True, OnChanged:=Sub() ThemeRefresh()), '不传入参数
         New Setting("UiBackgroundOpacity", 1000, OnChanged:=AddressOf FormMain.UpdateBackgroundAndTitleBar),

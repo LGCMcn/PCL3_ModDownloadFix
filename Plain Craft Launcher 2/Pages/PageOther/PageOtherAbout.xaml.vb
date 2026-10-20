@@ -5,6 +5,7 @@ Public Class PageOtherAbout
 
         '重复加载部分
         PanBack.ScrollToHome()
+        ApplyQuietCards(Me)
 
         '非重复加载部分
         If IsLoaded Then Return
@@ -44,10 +45,12 @@ Public Class PageOtherAbout
             TextProjectVersion.Text = "本机：v" & DownloadFixVersion & "  |  最新发行版：" & LatestProjectRelease.Tag &
                 If(LatestProjectRelease.IsNewer, "（可更新）", If(LatestProjectRelease.Version = ParseProjectVersion(DownloadFixVersion), "（已是最新版）", "（本机版本较新）"))
             TextProjectChanges.Text = LatestProjectRelease.Notes
+            IconProjectRelease.State = If(LatestProjectRelease.IsNewer, "download", "ready")
             BtnProjectInstall.IsEnabled = LatestProjectRelease.IsNewer AndAlso LatestProjectRelease.AssetUrl IsNot Nothing
             TextProjectUpdateStatus.Text = If(LatestProjectRelease.AssetUrl Is Nothing, "此历史发行版不支持自动更新，可点击发行版详情下载。", "更新会退出并重新启动程序；保留服务配置、账号和游戏目录，旧程序备份在 .pcl-update-backups。")
         Catch Ex As Exception
             LatestProjectRelease = Nothing
+            IconProjectRelease.State = "error"
             TextProjectVersion.Text = "本机第三方版本：v" & DownloadFixVersion & " · 暂时无法获取最新发行版"
             TextProjectChanges.Text = "获取失败，请点击检查更新重试。"
             TextProjectUpdateStatus.Text = Ex.Message
@@ -65,9 +68,11 @@ Public Class PageOtherAbout
         Try
             Dim Reporter As New Progress(Of String)(Sub(Value) TextProjectUpdateStatus.Text = Value)
             Dim PlanPath = Await PrepareProjectUpdate(LatestProjectRelease, Reporter)
+            IconProjectRelease.State = "ready"
             TextProjectUpdateStatus.Text = "校验通过，即将退出、替换程序并重新启动…"
             StartPreparedProjectUpdate(PlanPath)
         Catch Ex As Exception
+            IconProjectRelease.State = "error"
             TextProjectUpdateStatus.Text = "更新未完成：" & Ex.Message
             BtnProjectInstall.IsEnabled = True : BtnAboutUpdate.IsEnabled = True : InstallingProjectRelease = False
         End Try

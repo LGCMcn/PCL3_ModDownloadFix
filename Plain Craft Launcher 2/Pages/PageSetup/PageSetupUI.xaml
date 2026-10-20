@@ -6,6 +6,14 @@
     PanScroll="PanBack">
     <local:MyScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="PanBack">
         <StackPanel x:Name="PanMain" Margin="25,10">
+            <local:MyCard Title="界面动效与毛玻璃" Margin="0,15,0,0">
+                <StackPanel Margin="25,40,25,20">
+                    <local:MyCheckBox Text="启用毛玻璃背景（默认开启）" local:SettingService.Key="UiFrostedGlass" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="启用启动动画（下次启动生效）" local:SettingService.Key="UiStartupAnimation" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="启用错误提示动画" local:SettingService.Key="UiErrorAnimation" Height="24" />
+                    <local:MyCheckBox Text="启用图标状态动画（图标始终离线可用）" local:SettingService.Key="UiIconAnimation" Height="24" Margin="0,10,0,0" />
+                </StackPanel>
+            </local:MyCard>
             <local:MyCard Margin="0,15" Title="基础" x:Name="CardLauncher">
                 <Grid Margin="25,40,25,17">
                     <StackPanel>

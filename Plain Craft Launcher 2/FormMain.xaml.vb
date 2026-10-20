@@ -376,6 +376,7 @@ Public Class FormMain
         End If
         '加载窗口
         ThemeRefreshMain()
+        ApplyVisualExperience()
         Try
             Height = Settings.Get(Of Integer)("WindowHeight")
             Width = Settings.Get(Of Integer)("WindowWidth")
@@ -395,18 +396,25 @@ Public Class FormMain
         ShowWindowToTop()
         Dim HwndSource As Interop.HwndSource = PresentationSource.FromVisual(Me)
         HwndSource.AddHook(New Interop.HwndSourceHook(AddressOf WndProc))
-        AniStart({
-            AaCode(Sub() AniControlEnabled -= 1, 50),
-            AaOpacity(Me, Settings.Get(Of Integer)("UiLauncherTransparent") / 1000 + 0.4, 250, 100),
-            AaDouble(Sub(i) TransformPos.Y += i, -TransformPos.Y, 600, 100, New AniEaseOutBack(AniEasePower.Weak)),
-            AaDouble(Sub(i) TransformRotate.Angle += i, -TransformRotate.Angle, 500, 100, New AniEaseOutBack(AniEasePower.Weak)),
-            AaCode(
-            Sub()
-                PanBack.RenderTransform = Nothing
-                IsWindowLoadFinished = True
-                Logger.Info($"DPI：{DPI}，系统版本：{Environment.OSVersion.VersionString}，PCL 位置：{PathExe}")
-            End Sub, , True)
-        }, "Form Show")
+        If Settings.Get(Of Boolean)("UiStartupAnimation") AndAlso MotionAvailable() Then
+            TransformRotate.Angle = 0
+            TransformPos.Y = 18
+            AniStart({
+                AaCode(Sub() AniControlEnabled -= 1, 30),
+                AaOpacity(Me, Settings.Get(Of Integer)("UiLauncherTransparent") / 1000 + 0.4, 280, 20),
+                AaDouble(Sub(i) TransformPos.Y += i, -TransformPos.Y, 420, 20, New AniEaseOutFluent(AniEasePower.Weak)),
+                AaCode(Sub()
+                           PanBack.RenderTransform = Nothing
+                           IsWindowLoadFinished = True
+                       End Sub, , True)
+            }, "Form Show")
+        Else
+            PanBack.RenderTransform = Nothing
+            Opacity = Settings.Get(Of Integer)("UiLauncherTransparent") / 1000 + 0.4
+            AniControlEnabled -= 1
+            IsWindowLoadFinished = True
+        End If
+        Logger.Info($"DPI：{DPI}，系统版本：{Environment.OSVersion.VersionString}，PCL 位置：{PathExe}")
         'Timer 启动
         AniStart()
         TimerMainStart()

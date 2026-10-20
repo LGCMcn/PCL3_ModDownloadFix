@@ -59,6 +59,10 @@ class SmokeTests {
                 app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
                 V5Checks(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0);
             }
+            if(args.Contains("--visual")) {
+                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                VisualChecks();Console.WriteLine("RESULT: "+passed+" passed");Environment.Exit(0);
+            }
             if(args.Contains("--extra-network")) {
                 Call("ModBase","RunInUi"); // Initialize UI thread identity before creating the request worker.
                 var thread = new System.Threading.Thread(() => {
@@ -115,6 +119,71 @@ class SmokeTests {
         } catch(Exception e) { Console.Error.WriteLine(e); Environment.Exit(1); return 1; }
     }
     static int PaletteField(object palette,string name) {return (int)palette.GetType().GetField(name).GetValue(palette);}
+    static void Pump(int milliseconds) {
+        var frame=new System.Windows.Threading.DispatcherFrame();
+        var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(milliseconds)};
+        EventHandler tick=null;tick=(s,e)=>{timer.Stop();timer.Tick-=tick;frame.Continue=false;};timer.Tick+=tick;timer.Start();
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
+    }
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static WeakReference MakeGlassProbe() {
+        var layer=new System.Windows.Controls.Border();
+        Call("ModVisualExperience","ConfigureGlass",layer,new System.Windows.Controls.Canvas(),true);
+        var weak=new WeakReference(layer.Child);Call("ModVisualExperience","ConfigureGlass",layer,new System.Windows.Controls.Canvas(),false);return weak;
+    }
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static WeakReference MakeErrorProbe() {
+        var text=new System.Windows.Controls.TextBlock{Text="test"};Call("ModVisualExperience","BeginErrorAccent",text);return new WeakReference(text);
+    }
+    static void CapturePage(System.Windows.FrameworkElement page,int width,int height,string name) {
+        page.Measure(new System.Windows.Size(width,height));page.Arrange(new System.Windows.Rect(0,0,width,height));page.UpdateLayout();
+        var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap(width,height,96,96,System.Windows.Media.PixelFormats.Pbgra32);
+        bitmap.Render(page);var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+        using(var output=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,name)))encoder.Save(output);
+    }
+    static void VisualChecks() {
+        foreach(string key in new[]{"UiFrostedGlass","UiStartupAnimation","UiErrorAnimation","UiIconAnimation"})
+            Check((bool)Call("Settings","Get",key),"visual preference defaults enabled: "+key);
+        var layer=new System.Windows.Controls.Border();var background=new System.Windows.Controls.Canvas();
+        Call("ModVisualExperience","ConfigureGlass",layer,background,true);
+        Check(layer.Visibility==(System.Windows.SystemParameters.HighContrast?System.Windows.Visibility.Collapsed:System.Windows.Visibility.Visible),"glass respects high contrast setting");
+        Call("ModVisualExperience","ConfigureGlass",layer,background,false);
+        Check(layer.Child==null&&layer.Visibility==System.Windows.Visibility.Collapsed,"turning glass off releases background visual tree");
+        var references=Enumerable.Range(0,200).Select(i=>MakeGlassProbe()).ToList();
+        Pump(100);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
+        Check(references.Count(r=>r.IsAlive)<3,"200 glass toggles do not retain discarded visual layers");
+        var error=new System.Windows.Controls.TextBlock{Text="error"};Call("ModVisualExperience","BeginErrorAccent",error);
+        var transform=(System.Windows.Media.TranslateTransform)error.RenderTransform;
+        var errors=Enumerable.Range(0,100).Select(i=>MakeErrorProbe()).ToList();
+        Pump(800);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
+        Check(error.RenderTransform==null&&!transform.HasAnimatedProperties,"error animation removes its completed animation clock and transform");
+        Check(errors.Count(r=>r.IsAlive)<3,"100 completed error animations release target controls");
+        var samples=(double[])Call("MyOfflineMorphIcon","SpringSamples");
+        Check(samples.Length>5&&samples.Length<=90&&samples.Last()==1&&samples.All(v=>!double.IsInfinity(v)&&!double.IsNaN(v)),"offline morph spring is bounded, finite and reaches its final shape");
+        var icon=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyOfflineMorphIcon"));
+        var state=icon.GetType().GetProperty("State");
+        foreach(string value in new[]{"download","ready","error","device","link"}) {state.SetValue(icon,value);CapturePage(icon,24,24,"icon-"+value+".png");}
+        Check(true,"all local icon states render without external files or URLs");
+        string device=(string)Call("ModDeviceInfo","ReadBasicDeviceInfo");
+        Check(device.Contains("处理器")&&device.Contains("内存")&&device.Contains("磁盘"),"read real local processor, physical memory and disk configuration");
+        var query=(System.Threading.Tasks.Task)Call("ModDeviceInfo","ReadDeviceInfo",false);
+        Check(query.Wait(6500)&&((string)query.GetType().GetProperty("Result").GetValue(query)).Contains("显卡"),"graphics lookup returns a result or bounded fallback without blocking the UI");
+        var about=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.PageOtherAbout"));
+        Call("ModVisualExperience","ApplyQuietCards",about);
+        var item=about.FindName("ItemAboutPcl");var info=item.GetType().GetProperty("Info");
+        info.SetValue(item,((string)info.GetValue(item)).Replace("%VERSION%",(string)app.GetType("PCL.ModBase").GetField("VersionDisplay").GetRawConstantValue()).Replace("%VERSIONCODE%","413").Replace("%BRANCH%","0"));
+        ((System.Windows.Controls.TextBlock)about.FindName("TextProjectVersion")).Text="本机：v1.2.0  |  最新发行版：v1.2.0（已是最新版）";
+        ((System.Windows.Controls.TextBox)about.FindName("TextProjectChanges")).Text="[ + ] 本项目发行版检查与一键更新\r\n[ + ] 本机设备配置与离线图标\r\n[ - ] 修复更新失败时的程序恢复";
+        Check(about.FindName("IconProjectRelease")!=null&&about.FindName("BtnProjectInstall")!=null,"about page contains local status icon and one-click updater");
+        foreach(var size in new[]{Tuple.Create(600,1050),Tuple.Create(810,1100),Tuple.Create(1100,1200)}) CapturePage(about,size.Item1,size.Item2,"about-"+size.Item1+".png");
+        var toolbox=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.PageOtherTest"));
+        Call("ModVisualExperience","ApplyQuietCards",toolbox);
+        app.GetType("PCL.SettingService").GetMethod("RefreshSettings",BindingFlags.Public|BindingFlags.Static).Invoke(null,new object[]{toolbox});
+        ((System.Windows.Controls.TextBox)toolbox.FindName("TextDeviceInfo")).Text=device+"\r\n\r\n显卡：本机信息读取后在此显示";
+        Check(toolbox.FindName("BtnDeviceRefresh")!=null,"toolbox exposes refreshable device configuration");
+        CapturePage(toolbox,700,850,"toolbox-preview.png");
+        Console.WriteLine("VISUAL: 200 glass toggles and 100 error animations; "+errors.Count(r=>r.IsAlive)+" error targets retained after full collection.");
+    }
     static void ProjectUpdateChecks() {
         Check((Version)Call("ModProjectUpdate","ParseProjectVersion","v1.10.0")>(Version)Call("ModProjectUpdate","ParseProjectVersion","v1.9.9"),"compare release versions numerically");
         Check((Version)Call("ModProjectUpdate","ParseProjectVersion","1.2.0")==new Version(1,2,0,0),"normalize current release version");

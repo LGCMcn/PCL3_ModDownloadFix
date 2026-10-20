@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/guillermolg00/morphicons",
+  "commit": "e49d2a2465c69711d08345cb37050599af0e381b",
+  "license": "MIT",
+  "imported_files": [
+    "LICENSE",
+    "src/core/spring.ts"
+  ],
+  "adaptation": "Native WPF port of spring integration with fixed local stroke shapes. Not a port of the full SVG correspondence engine.",
+  "runtime_network": false
+}
