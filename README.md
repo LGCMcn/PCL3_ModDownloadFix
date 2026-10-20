@@ -10,9 +10,11 @@
 
 游戏下载入口恢复，Mod 搜索、文件下载实际演示！**PCL3 Download 修复版**基于 PCL 公开源码独立修改，提供可下载的 Windows 运行包与完整源码。约 90 秒演示带你看 Minecraft 版本选择、Modrinth 搜索和 Sodium 文件下载。
 
-[![点击在线观看 PCL3 Download 修复版宣传演示：游戏下载入口恢复与 Modrinth 实测](docs/media/pcl3-downloadfix-promo.jpg)](https://lgcmcn.github.io/PCL3_ModDownloadFix/)
+**点击下方播放器即可在本页观看，无需下载或跳转网页。** 如无声音，点击播放器的喇叭按钮开启声音。
 
-**[▶ 在线播放 1080p 演示视频](https://lgcmcn.github.io/PCL3_ModDownloadFix/)**（点击封面进入播放器，无需先下载文件） · [下载运行版](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest) · [NAS 备用下载（方便新手获取文件）](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce) · [视频简介与章节](docs/promo.md)
+https://github.com/user-attachments/assets/b05d03ac-7768-40b5-be95-86de5509e98a
+
+[下载运行版](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/latest) · [NAS 备用下载（方便新手获取文件）](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce) · [视频简介与章节](docs/promo.md)
 
 视频使用实际启动器录屏、AI 配音和 3D 动画。原作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）；第三方修改与原作者无关，**不代表 PCL 官方发布**。配置要求与功能边界请继续阅读下方说明。
 
