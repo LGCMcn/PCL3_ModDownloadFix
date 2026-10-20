@@ -6,6 +6,8 @@ on:
       - 'PCLCS/**'
       - 'MeloongCore/**'
       - 'build.ps1'
+      - 'scripts/**'
+      - 'tests/**'
       - '.github/workflows/**'
   pull_request:
   workflow_dispatch:
@@ -38,6 +40,7 @@ jobs:
           New-Item -ItemType Directory -Path package | Out-Null
           Copy-Item 'Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe' package/
           Copy-Item 'Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe.config' package/
+          Copy-Item 'Plain Craft Launcher 2/bin/PCL.Update.exe' package/
           Copy-Item PCL.Services.example.json package/PCL.Services.json
           Copy-Item PCL.Link.example.json package/PCL.Link.json
           Copy-Item LICENCE package/
