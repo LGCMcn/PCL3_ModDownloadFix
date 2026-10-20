@@ -23,4 +23,7 @@ if (-not $msbuildPath) { throw '需要 Visual Studio Build Tools 的 .NET 桌面
 if ($LASTEXITCODE -ne 0) { throw 'NuGet 还原失败。' }
 & $msbuildPath (Join-Path $repoRoot 'Plain Craft Launcher 2\Plain Craft Launcher 2.vbproj') "/p:Configuration=$Configuration" /m /v:minimal /nologo
 if ($LASTEXITCODE -ne 0) { throw '构建失败。' }
+$compiler = Join-Path (Split-Path $msbuildPath -Parent) 'Roslyn\csc.exe'
+& $compiler /nologo /target:winexe /r:System.Core.dll /r:System.Xml.Linq.dll /r:System.Windows.Forms.dll "/out:$repoRoot\Plain Craft Launcher 2\bin\PCL.Update.exe" (Join-Path $repoRoot 'scripts\Updater.cs')
+if ($LASTEXITCODE -ne 0) { throw '更新工具构建失败。' }
 Write-Output (Join-Path $repoRoot 'Plain Craft Launcher 2\bin\Plain Craft Launcher 2.exe')

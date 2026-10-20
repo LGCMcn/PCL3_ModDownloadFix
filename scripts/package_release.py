@@ -37,6 +37,7 @@ def main():
         shutil.copy2(source, destination)
     for config in ('PCL.Services','PCL.Link'):
         shutil.copy2(repo/(config+'.example.json'), portable/(config+'.json'))
+    shutil.copy2(output/'PCL.Update.exe', portable/'PCL.Update.exe')
     for document, title, old, new in (('usage.md','使用说明.md','(analysis.md)','(项目分析与验证.md)'),
         ('analysis.md','项目分析与验证.md','(usage.md)','(使用说明.md)')):
         (portable/title).write_text((repo/'docs'/document).read_text(encoding='utf-8').replace(old,new), encoding='utf-8')
@@ -84,17 +85,19 @@ def main():
 | 源码提交 | `{commit}` |
 | 平台 | Windows x64 / .NET Framework 4.8 |
 | Windows 主色 | 固定蓝色 |
-| 本地验证 | 96 项检查通过；含真实下载及 GitHub／FTB 查询 |
+| 本地验证 | 136 项检查通过；含真实下载、来源查询与更新恢复测试 |
 
 ## 更新内容
 
-- 恢复固定蓝色，移除 v1.1.0 的免费换色与类似赞助主题表现；v1.1.0 已撤回，不再公开分发。
-- 标题栏增加“第三方版本 v1.2.0”标识，关于页同时显示第三方与上游版本。
-- 新增微软多账号管理：添加、切换、单独移除本机账号；UUID 与 Client ID 分组，Windows DPAPI 加密。
-- 修复微软设备授权端点、令牌表单编码、轮询间隔、slow_down、过期和应用接入错误提示；刷新串行进行。
-- 严格验证 HTTPS 证书；带凭据请求使用无公共磁盘缓存的客户端，跨站跳转不转发 Key。
-- 新增无需 Key 的 GitHub 发布目录和 FTB 官方整合包目录；FTB 目前为浏览和官方安装入口，尚未自动安装。
-- 完整源码包含 VB.NET / WPF 主体、C# 依赖、构建、测试和本次打包／发行脚本，并说明实现与校验方式。
+- [ - ] 恢复固定蓝色，移除 v1.1.0 的免费换色与类似赞助主题表现；v1.1.0 已撤回，不再公开分发。
+- [ + ] 标题栏增加“第三方版本 v1.2.0”标识，关于页同时显示第三方与上游版本。
+- [ + ] 新增微软多账号管理：添加、切换、单独移除本机账号；UUID 与 Client ID 分组，Windows DPAPI 加密。
+- [ - ] 修复微软设备授权端点、令牌表单编码、轮询间隔、slow_down、过期和应用接入错误提示；刷新串行进行。
+- [ - ] 严格验证 HTTPS 证书；带凭据请求使用无公共磁盘缓存的客户端，跨站跳转不转发 Key。
+- [ + ] 新增无需 Key 的 GitHub 发布目录和 FTB 官方整合包目录；FTB 目前为浏览和官方安装入口，尚未自动安装。
+- [ + ] 完整源码包含 VB.NET / WPF 主体、C# 依赖、构建、测试和本次打包／发行脚本，并说明实现与校验方式。
+
+- [ + ] 关于页自动获取本项目最新正式发行版和更新记录；一键下载、校验、退出替换与重启，失败恢复旧程序，保留配置和游戏目录。
 
 ## 下载
 

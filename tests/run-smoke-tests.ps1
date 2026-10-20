@@ -13,8 +13,12 @@ Copy-Item (Join-Path $output '*.dll') $testRoot
 Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\Resources\Newtonsoft.Json.dll') $testRoot
 Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\App.config') (Join-Path $testRoot 'SmokeTests.exe.config')
 $wpfRefs = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\WPF'
-& $compiler /nologo "/out:$testRoot\SmokeTests.exe" "/r:$testRoot\Newtonsoft.Json.dll" /r:System.Net.Http.dll "/r:$wpfRefs\PresentationFramework.dll" "/r:$wpfRefs\PresentationCore.dll" "/r:$wpfRefs\WindowsBase.dll" (Join-Path $PSScriptRoot 'SmokeTests.cs')
+& $compiler /nologo "/out:$testRoot\SmokeTests.exe" "/r:$testRoot\Newtonsoft.Json.dll" /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/r:$wpfRefs\PresentationFramework.dll" "/r:$wpfRefs\PresentationCore.dll" "/r:$wpfRefs\WindowsBase.dll" (Join-Path $PSScriptRoot 'SmokeTests.cs')
 if ($LASTEXITCODE -ne 0) { throw '测试程序编译失败。' }
+& $compiler /nologo /target:exe /main:UpdaterTests /r:System.Core.dll /r:System.Xml.Linq.dll /r:System.Windows.Forms.dll "/out:$testRoot\UpdaterTests.exe" (Join-Path $repoRoot 'scripts\Updater.cs') (Join-Path $PSScriptRoot 'UpdaterTests.cs')
+if ($LASTEXITCODE -ne 0) { throw '更新测试程序编译失败。' }
+& (Join-Path $testRoot 'UpdaterTests.exe')
+if ($LASTEXITCODE -ne 0) { throw '更新替换与恢复检查失败。' }
 
 # 测试进程只接收合成配置，避免意外读取 CI 或本机的真实个人凭据。
 $savedMsId = $env:PCL_MS_CLIENT_ID
@@ -30,6 +34,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw '第三方个性化检查失败。' }
     & (Join-Path $testRoot 'SmokeTests.exe') --v5
     if ($LASTEXITCODE -ne 0) { throw '动态效果、认证与多账号检查失败。' }
+    & (Join-Path $testRoot 'SmokeTests.exe') --updater
+    if ($LASTEXITCODE -ne 0) { throw '项目发行版与更新包检查失败。' }
     if ($ExtraNetwork) {
         & (Join-Path $testRoot 'SmokeTests.exe') --extra-network
         if ($LASTEXITCODE -ne 0) { throw '新增来源的网络检查失败。' }

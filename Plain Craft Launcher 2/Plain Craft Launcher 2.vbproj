@@ -264,6 +264,7 @@
     <Compile Include="Modules\ModAccounts.vb" />
     <Compile Include="Modules\ModExtraSources.vb" />
     <Compile Include="Modules\ModServiceSetup.vb" />
+    <Compile Include="Modules\ModProjectUpdate.vb" />
     <Compile Include="Pages\PageDownload\Resource\PageResource.xaml.vb">
       <DependentUpon>PageResource.xaml</DependentUpon>
     </Compile>

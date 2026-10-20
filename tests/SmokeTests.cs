@@ -69,6 +69,7 @@ class SmokeTests {
                     } catch(Exception e) {Console.WriteLine(e); Environment.Exit(1);}
                 }); thread.Start(); thread.Join();
             }
+            if(args.Contains("--updater")) { ProjectUpdateChecks(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0); }
             if(args.Contains("--custom-config")) { CustomConfig(); Console.WriteLine("RESULT: "+passed+" passed"); Environment.Exit(0); }
             if(args.Contains("--invalid-config")) {
                 try {Call("ModServices","ServiceValue","MicrosoftClientId","",null); throw new Exception("invalid config accepted");}
@@ -114,6 +115,50 @@ class SmokeTests {
         } catch(Exception e) { Console.Error.WriteLine(e); Environment.Exit(1); return 1; }
     }
     static int PaletteField(object palette,string name) {return (int)palette.GetType().GetField(name).GetValue(palette);}
+    static void ProjectUpdateChecks() {
+        Check((Version)Call("ModProjectUpdate","ParseProjectVersion","v1.10.0")>(Version)Call("ModProjectUpdate","ParseProjectVersion","v1.9.9"),"compare release versions numerically");
+        Check((Version)Call("ModProjectUpdate","ParseProjectVersion","1.2.0")==new Version(1,2,0,0),"normalize current release version");
+        foreach(string tag in new[]{"v1.2.0-beta","../../x","latest","1.2"}) {
+            bool failed=false;try{Call("ModProjectUpdate","ParseProjectVersion",tag);}catch{failed=true;}
+            Check(failed,"reject invalid stable version "+tag);
+        }
+        string notes=(string)Call("ModProjectUpdate","FormatProjectNotes","# Intro\n- [ + ] 增加多账号\n[ - ] 修复下载\nother details");
+        Check(notes=="[ + ] 增加多账号\r\n[ - ] 修复下载","display added features and bug fixes in requested format");
+        const string prefix="https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/download/v1.3.0/";
+        Check((bool)Call("ModProjectUpdate","IsProjectAssetUrl",prefix+"PCL.DownloadFix.Windows-x64.zip","v1.3.0","PCL.DownloadFix.Windows-x64.zip"),"accept release asset from exact project and tag");
+        foreach(string url in new[]{prefix.Replace("LGCMcn","other")+"PCL.DownloadFix.Windows-x64.zip",prefix.Replace("https:","http:")+"PCL.DownloadFix.Windows-x64.zip",prefix+"PCL.DownloadFix.Windows-x64.zip?redirect=evil"})
+            Check(!(bool)Call("ModProjectUpdate","IsProjectAssetUrl",url,"v1.3.0","PCL.DownloadFix.Windows-x64.zip"),"refuse unrelated or insecure update asset");
+        foreach(string name in new[]{"../launcher.exe","PCL.Services.json/../launcher.exe",".minecraft/options.txt","PCL/Log1.txt","unknown.dll"})
+            Check(!(bool)Call("ModProjectUpdate","IsUpdatePackageFile",name),"deny unsupported ZIP entry "+name);
+        var release=new JObject { ["tag_name"]="v1.3.0", ["body"]="[ + ] Test",["assets"]=new JArray(new JObject { ["name"]="PCL.DownloadFix.Windows-x64.zip",["size"]=1024,["digest"]="sha256:"+new string('a',64),["browser_download_url"]=prefix+"PCL.DownloadFix.Windows-x64.zip"})};
+        var parsed=Call("ModProjectUpdate","ParseProjectRelease",release);
+        Check((bool)parsed.GetType().GetProperty("IsNewer").GetValue(parsed),"newer stable release enables update");
+        Check((string)parsed.GetType().GetProperty("Sha256").GetValue(parsed)==new string('a',64),"use GitHub release asset SHA256");
+        release["prerelease"]=true;
+        bool denied=false;try{Call("ModProjectUpdate","ParseProjectRelease",release);}catch{denied=true;}
+        Check(denied,"never install prerelease automatically");
+        string temp=Path.Combine(Path.GetTempPath(),"pcl-zip-check-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(temp);
+        try {
+            const string exe="Plain Craft Launcher (PCL) LGCMcn 下载修复版.exe";
+            var contents=new System.Collections.Generic.Dictionary<string,string>{{exe,"dummy-program"},{exe+".config","dummy-config"},{"PCL.Update.exe","dummy-helper"},{"LICENCE","dummy-license"},{"PCL.Services.json","example-not-personal"},{"PCL.Release.json","{\"repository\":\"LGCMcn/PCL3_ModDownloadFix\",\"version\":\"1.3.0\"}"}};
+            var hashes=new JObject();
+            foreach(var pair in contents) using(var sha=System.Security.Cryptography.SHA256.Create()) hashes[pair.Key]=BitConverter.ToString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(pair.Value))).Replace("-","").ToLowerInvariant();
+            contents["SHA256SUMS.json"]=hashes.ToString();
+            string archive=Path.Combine(temp,"package.zip");
+            Action<string> write=path=>{using(var zip=System.IO.Compression.ZipFile.Open(path,System.IO.Compression.ZipArchiveMode.Create))foreach(var pair in contents)using(var writer=new StreamWriter(zip.CreateEntry(pair.Key).Open(),new System.Text.UTF8Encoding(false)))writer.Write(pair.Value);};
+            write(archive);
+            var selected=(System.Collections.IList)Call("ModProjectUpdate","ExtractVerifiedUpdate",archive,Path.Combine(temp,"valid"),"1.3.0");
+            Check(selected.Contains(exe)&&!selected.Contains("PCL.Services.json"),"verified update package selects program files and preserves personal JSON");
+            bool rejected=false;try{Call("ModProjectUpdate","ExtractVerifiedUpdate",archive,Path.Combine(temp,"version"),"1.4.0");}catch{rejected=true;}
+            Check(rejected,"reject package version mismatch");
+            contents[exe]="corrupt-program";archive=Path.Combine(temp,"corrupt.zip");write(archive);
+            rejected=false;try{Call("ModProjectUpdate","ExtractVerifiedUpdate",archive,Path.Combine(temp,"bad-hash"),"1.3.0");}catch{rejected=true;}
+            Check(rejected,"reject corrupt files even inside a readable ZIP");
+            contents["../outside.txt"]="escape";archive=Path.Combine(temp,"traversal.zip");write(archive);
+            rejected=false;try{Call("ModProjectUpdate","ExtractVerifiedUpdate",archive,Path.Combine(temp,"bad-path"),"1.3.0");}catch{rejected=true;}
+            Check(rejected&&!File.Exists(Path.Combine(temp,"outside.txt")),"reject ZIP path traversal before writing outside staging folder");
+        } finally {Directory.Delete(temp,true);}
+    }
     static void Personalization() {
         for(int id=0;id<=14;id++) {
             var p=Call("ModPersonalization","GetPersonalizationPalette",id);

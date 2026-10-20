@@ -42,6 +42,17 @@
                                     x:Name="BtnAboutUpdate" />
                 </Grid>
             </local:MyCard>
+            <local:MyCard Margin="0,0,0,15" Title="项目版本与更新">
+                <StackPanel Margin="25,37,25,18">
+                    <TextBlock x:Name="TextProjectVersion" Text="正在获取版本信息…" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <TextBox x:Name="TextProjectChanges" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" MaxHeight="230" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+                    <WrapPanel Margin="0,0,0,8">
+                        <local:MyButton x:Name="BtnProjectInstall" Text="下载并更新" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,12,6" ColorType="Highlight" IsEnabled="False" />
+                        <local:MyButton x:Name="BtnProjectRelease" Text="发行版详情" Height="35" MinWidth="140" Padding="13,0" Margin="0,0,0,6" />
+                    </WrapPanel>
+                    <TextBlock x:Name="TextProjectUpdateStatus" Text="更新会退出并重启程序，个人配置和游戏目录会保留。" TextWrapping="Wrap" />
+                </StackPanel>
+            </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="第三方修改说明">
                 <TextBlock Margin="25,37,25,15" Text="本版本由 LGCMcn 基于 PCL 公开源码独立修改。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，本版本不代表 PCL 官方发布，不是官方发行版。保留原作者署名；源码：https://github.com/LGCMcn/PCL3_ModDownloadFix" TextWrapping="Wrap" />
             </local:MyCard>
