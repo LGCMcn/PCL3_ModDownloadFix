@@ -2,9 +2,11 @@
 
 游戏下载入口恢复，Mod 搜索、文件下载实际演示！LGCMcn 基于 PCL 公开源码独立制作的第三方下载修复版，已提供 Windows 运行包与完整源码。下载前，先用约 90 秒了解实际操作。
 
-[![PCL3 Download 修复版宣传封面](media/pcl3-downloadfix-promo.jpg)](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/download/downloadfix-personalization-2026.10.20/PCL3.DownloadFix.Promo.1080p.mp4)
+[![点击在线观看 PCL3 Download 修复版宣传演示](media/pcl3-downloadfix-promo.jpg)](https://lgcmcn.github.io/PCL3_ModDownloadFix/)
 
-[打开／下载宣传演示视频（1080p MP4）](https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/download/downloadfix-personalization-2026.10.20/PCL3.DownloadFix.Promo.1080p.mp4)
+[▶ 在线播放宣传演示视频（1080p）](https://lgcmcn.github.io/PCL3_ModDownloadFix/)
+
+点击封面或上方入口即可打开网页播放器，支持播放、暂停、拖动进度、调整音量和全屏，无需先下载文件。
 
 ## 视频简介
 
