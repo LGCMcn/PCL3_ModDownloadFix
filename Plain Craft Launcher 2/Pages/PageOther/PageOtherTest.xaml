@@ -1,4 +1,4 @@
-<local:MyPageRight x:Class="PageOtherTest"
+﻿<local:MyPageRight x:Class="PageOtherTest"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -17,10 +17,14 @@
             </local:MyCard>
             <local:MyCard Title="界面效果" Margin="0,0,0,15">
                 <StackPanel Margin="25,40,25,20">
-                    <local:MyCheckBox Text="启用毛玻璃背景（默认开启）" local:SettingService.Key="UiFrostedGlass" Height="24" Margin="0,0,0,10" />
-                    <local:MyCheckBox Text="启用启动动画（下次启动生效）" local:SettingService.Key="UiStartupAnimation" Height="24" Margin="0,0,0,10" />
-                    <local:MyCheckBox Text="启用错误提示动画" local:SettingService.Key="UiErrorAnimation" Height="24" Margin="0,0,0,10" />
-                    <local:MyCheckBox Text="启用图标状态动画（图标始终离线可用）" local:SettingService.Key="UiIconAnimation" Height="24" Margin="0,0,0,14" />
+                    <local:MyCheckBox Text="毛玻璃背景" local:SettingService.Key="UiFrostedGlass" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="启动动画" local:SettingService.Key="UiStartupAnimation" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="错误提示动画" local:SettingService.Key="UiErrorAnimation" Height="24" Margin="0,0,0,10" />
+                    <local:MyCheckBox Text="图标状态动画" local:SettingService.Key="UiIconAnimation" Height="24" Margin="0,0,0,14" />
+                    <local:MyCheckBox Text="页面与导航动画" local:SettingService.Key="UiNavigationAnimation" Height="24" Margin="0,10,0,0" />
+                    <local:MyCheckBox Text="平滑滚动" local:SettingService.Key="UiSmoothScroll" Height="24" Margin="0,10,0,0" />
+                    <local:MyCheckBox Text="关闭动画" local:SettingService.Key="UiCloseAnimation" Height="24" Margin="0,10,0,0" />
+                    <local:MyCheckBox Text="最小化动画" local:SettingService.Key="UiMinimizeAnimation" Height="24" Margin="0,10,0,0" />
                     <TextBlock Text="效果保持蓝色主调。尊重系统的动画和高对比度设置；低渲染能力设备自动使用轻量背景。" TextWrapping="Wrap" />
                 </StackPanel>
             </local:MyCard>

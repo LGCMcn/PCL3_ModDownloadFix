@@ -12,8 +12,9 @@ Copy-Item (Join-Path $output '*.exe*') $testRoot
 Copy-Item (Join-Path $output '*.dll') $testRoot
 Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\Resources\Newtonsoft.Json.dll') $testRoot
 Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\App.config') (Join-Path $testRoot 'SmokeTests.exe.config')
+Copy-Item (Join-Path $repoRoot 'Plain Craft Launcher 2\FormMain.xaml') (Join-Path $testRoot 'FormMain.preview.xaml')
 $wpfRefs = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\WPF'
-& $compiler /nologo "/out:$testRoot\SmokeTests.exe" "/r:$testRoot\Newtonsoft.Json.dll" /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/r:$wpfRefs\PresentationFramework.dll" "/r:$wpfRefs\PresentationCore.dll" "/r:$wpfRefs\WindowsBase.dll" (Join-Path $PSScriptRoot 'SmokeTests.cs')
+& $compiler /nologo "/out:$testRoot\SmokeTests.exe" "/r:$testRoot\Newtonsoft.Json.dll" /r:System.Net.Http.dll /r:System.Xml.Linq.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/r:$wpfRefs\PresentationFramework.dll" "/r:$wpfRefs\PresentationCore.dll" "/r:$wpfRefs\WindowsBase.dll" (Join-Path $PSScriptRoot 'SmokeTests.cs')
 if ($LASTEXITCODE -ne 0) { throw '测试程序编译失败。' }
 & $compiler /nologo /target:exe /main:UpdaterTests /r:System.Core.dll /r:System.Xml.Linq.dll /r:System.Windows.Forms.dll "/out:$testRoot\UpdaterTests.exe" (Join-Path $repoRoot 'scripts\Updater.cs') (Join-Path $PSScriptRoot 'UpdaterTests.cs')
 if ($LASTEXITCODE -ne 0) { throw '更新测试程序编译失败。' }
@@ -38,6 +39,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw '项目发行版与更新包检查失败。' }
     & (Join-Path $testRoot 'SmokeTests.exe') --visual
     if ($LASTEXITCODE -ne 0) { throw '界面效果、设备配置与资源释放检查失败。' }
+    & (Join-Path $testRoot 'SmokeTests.exe') --interaction
+    if ($LASTEXITCODE -ne 0) { throw '导航响应、平滑滚动与重启提示检查失败。' }
     if ($ExtraNetwork) {
         & (Join-Path $testRoot 'SmokeTests.exe') --extra-network
         if ($LASTEXITCODE -ne 0) { throw '新增来源的网络检查失败。' }

@@ -1,4 +1,4 @@
-Public Class MyPageRight
+﻿Public Class MyPageRight
     Inherits AdornerDecorator
     Public PageUuid As Integer = GetUuid()
 
@@ -181,7 +181,7 @@ Public Class MyPageRight
                     TriggerEnterAnimation(PanAlways, If(PanContent, Child))
                 ElseIf PageLoader.State = LoadState.Loading Then
                     PageState = PageStates.LoaderWait
-                    AniStart(AaCode(AddressOf PageOnLoaderWaitFinished, 400), "PageRight PageChange " & PageUuid)
+                    AniStart(AaCode(AddressOf PageOnLoaderWaitFinished, 120), "PageRight PageChange " & PageUuid)
                 Else 'PageLoader.State = LoadState.Failed
                     PageState = PageStates.LoaderEnter
                     TriggerEnterAnimation(PanAlways, PanLoader)
@@ -193,7 +193,7 @@ Public Class MyPageRight
                     TriggerEnterAnimation(If(PanContent, Child))
                 ElseIf PageLoader.State = LoadState.Loading Then
                     PageState = PageStates.LoaderWait
-                    AniStart(AaCode(AddressOf PageOnLoaderWaitFinished, 400), "PageRight PageChange " & PageUuid)
+                    AniStart(AaCode(AddressOf PageOnLoaderWaitFinished, 120), "PageRight PageChange " & PageUuid)
                 Else 'PageLoader.State = LoadState.Failed
                     PageState = PageStates.LoaderEnter
                     TriggerEnterAnimation(PanLoader)
@@ -287,7 +287,7 @@ Public Class MyPageRight
                 PageState = PageStates.ContentStay
             Case PageStates.LoaderEnter
                 PageState = PageStates.LoaderStayForce
-                AniStart(AaCode(AddressOf PageOnLoaderStayFinished, 400), "PageRight PageChange " & PageUuid)
+                AniStart(AaCode(AddressOf PageOnLoaderStayFinished, 120), "PageRight PageChange " & PageUuid)
             Case Else
                 Throw New Exception("在状态为 " & PageState.ToString() & " 时触发了 PageOnEnterAnimationFinished 事件。")
         End Select
@@ -394,6 +394,7 @@ Public Class MyPageRight
         For Each Element In RealElements
             Element.Visibility = Visibility.Visible '页面均处于默认的隐藏状态
         Next
+        Dim Animate = NavigationMotionEnabled()
         Dim AniList As New List(Of AniData)
         Dim Delay As Integer = 0
         '基础动画
@@ -407,20 +408,26 @@ Public Class MyPageRight
                 If TypeOf Control Is MyExtraTextButton Then
                     CType(Control, MyExtraTextButton).Show = True
                 Else
-                    Control.Opacity = 0
-                    Control.RenderTransform = New TranslateTransform(0, -16)
-                    AniList.Add(AaOpacity(Control, 1, 100, Delay, New AniEaseOutFluent(AniEasePower.Weak)))
-                    AniList.Add(AaTranslateY(Control, 5, 250, Delay, New AniEaseOutFluent))
-                    AniList.Add(AaTranslateY(Control, 11, 350, Delay, New AniEaseOutBack))
-                    Delay += 25
+                    Control.Opacity = If(Animate, 0.94, 1)
+                    Control.RenderTransform = New TranslateTransform(0, If(Animate, 6, 0))
+                    If Animate Then
+                        AniList.Add(AaOpacity(Control, 0.06, 90, Delay, New AniEaseOutFluent(AniEasePower.Weak)))
+                        AniList.Add(AaTranslateY(Control, -6, 170, Delay, New AniEaseOutFluent))
+                        Delay = Math.Min(24, Delay + 6)
+                    End If
                 End If
             Next
         Next
+        If Not Animate Then
+            AniStop("PageRight PageChange " & PageUuid)
+            PageOnEnterAnimationFinished()
+            Return
+        End If
         '滚动条动画
         Dim Scroll As MyScrollBar = GetFirstScrollViewer(RealElements)
         If Scroll IsNot Nothing Then
             If TypeOf Scroll.RenderTransform IsNot TranslateTransform Then Scroll.RenderTransform = New TranslateTransform(10, 0)
-            AniList.Add(AaTranslateX(Scroll, -CType(Scroll.RenderTransform, TranslateTransform).X, 350, 0, New AniEaseOutFluent))
+            AniList.Add(AaTranslateX(Scroll, -CType(Scroll.RenderTransform, TranslateTransform).X, 150, 0, New AniEaseOutFluent))
         End If
         '结束
         AniList.Add(AaCode(Sub() PageOnEnterAnimationFinished(),, True))
@@ -430,6 +437,14 @@ Public Class MyPageRight
     '逐个退出动画
     Public Sub TriggerExitAnimation(ParamArray Elements As FrameworkElement())
         Dim RealElements = Elements.Where(Function(e) e IsNot Nothing)
+        If Not NavigationMotionEnabled() Then
+            AniStop("PageRight PageChange " & PageUuid)
+            For Each Element In RealElements
+                Element.Visibility = Visibility.Collapsed
+            Next
+            PageOnExitAnimationFinished()
+            Return
+        End If
         Dim AniList As New List(Of AniData)
         Dim Delay As Integer = 0
         For Each Element In RealElements
@@ -440,7 +455,7 @@ Public Class MyPageRight
                     Control.IsHitTestVisible = False
                     AniList.Add(AaOpacity(Control, -1, 70, Delay))
                     AniList.Add(AaTranslateY(Control, -6, 70, Delay))
-                    Delay += 15
+                    Delay = Math.Min(12, Delay + 4)
                 End If
             Next
         Next

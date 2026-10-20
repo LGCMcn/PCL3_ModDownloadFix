@@ -59,24 +59,7 @@ Public Class PageDownloadLeft
         End Try
     End Sub
     Private Shared Sub PageChangeRun(Target As MyPageRight)
-        AniStop("FrmMain PageChangeRight") '停止主页面的右页面切换动画，防止它与本动画一起触发多次 PageOnEnter
-        If Target.Parent IsNot Nothing Then Target.SetValue(ContentPresenter.ContentProperty, Nothing)
-        FrmMain.PageRight = Target
-        CType(FrmMain.PanMainRight.Child, MyPageRight).PageOnExit()
-        AniStart({
-            AaCode(
-            Sub()
-                CType(FrmMain.PanMainRight.Child, MyPageRight).PageOnForceExit()
-                FrmMain.PanMainRight.Child = FrmMain.PageRight
-                FrmMain.PageRight.Opacity = 0
-            End Sub, 130),
-            AaCode(
-            Sub()
-                '延迟触发页面通用动画，以使得在 Loaded 事件中加载的控件得以处理
-                FrmMain.PageRight.Opacity = 1
-                FrmMain.PageRight.PageOnEnter()
-            End Sub, 30, True)
-        }, "PageLeft PageChange")
+        FrmMain.SwitchRightPage(Target)
     End Sub
 
 #End Region

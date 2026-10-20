@@ -1,4 +1,4 @@
-Imports System.Security.Cryptography
+﻿Imports System.Security.Cryptography
 
 Public Class Settings
 
@@ -141,6 +141,10 @@ Public Class Settings
         New Setting("UiStartupAnimation", True),
         New Setting("UiErrorAnimation", True),
         New Setting("UiIconAnimation", True),
+        New Setting("UiNavigationAnimation", True),
+        New Setting("UiSmoothScroll", True),
+        New Setting("UiCloseAnimation", True),
+        New Setting("UiMinimizeAnimation", True),
         New Setting("UiLauncherEmail", False),
         New Setting("UiBackgroundColorful", True, OnChanged:=Sub() ThemeRefresh()), '不传入参数
         New Setting("UiBackgroundOpacity", 1000, OnChanged:=AddressOf FormMain.UpdateBackgroundAndTitleBar),

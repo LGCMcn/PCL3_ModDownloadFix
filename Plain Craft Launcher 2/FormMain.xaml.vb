@@ -1,4 +1,4 @@
-Imports System.ComponentModel
+﻿Imports System.ComponentModel
 Imports System.Windows.Interop
 
 Public Class FormMain
@@ -377,6 +377,7 @@ Public Class FormMain
         '加载窗口
         ThemeRefreshMain()
         ApplyVisualExperience()
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, New Action(Sub() UpdateTitleSelection(False)))
         Try
             Height = Settings.Get(Of Integer)("WindowHeight")
             Width = Settings.Get(Of Integer)("WindowWidth")
@@ -388,6 +389,7 @@ Public Class FormMain
         'MinHeight = 50
         'MinWidth = 50
         Topmost = False
+        GetWindowMotion()
         If FrmStart IsNot Nothing Then FrmStart.Close(New TimeSpan(0, 0, 0, 0, 400 / AniSpeed))
         '更改窗口
         Top = (GetWPFSize(My.Computer.Screen.WorkingArea.Height) - Height) / 2
@@ -567,6 +569,16 @@ Public Class FormMain
 
 #Region "自定义窗口"
 
+    Private _WindowMotion As WindowMotion
+    Private IsClosingAccepted As Boolean
+    Private Function GetWindowMotion() As WindowMotion
+        If _WindowMotion Is Nothing Then _WindowMotion = New WindowMotion(Me)
+        Return _WindowMotion
+    End Function
+    Public Sub MinimizeWithMotion()
+        GetWindowMotion().Minimize()
+    End Sub
+
     '关闭
     Private Sub FormMain_Closing(sender As Object, e As CancelEventArgs) Handles Me.Closing
         EndProgram(True)
@@ -577,6 +589,8 @@ Public Class FormMain
     ''' </summary>
     ''' <param name="SendWarning">是否在还有下载任务未完成时发出警告。</param>
     Public Sub EndProgram(SendWarning As Boolean)
+        If IsClosingAccepted Then Return
+        _WindowMotion?.CancelMinimize()
         '强行结束下载任务？
         If HasDownloadingTask() Then
             If SendWarning AndAlso MyMsgBox("还有下载任务尚未完成，是否确定退出？", "提示", "确定", "取消") = 2 Then Return
@@ -594,31 +608,14 @@ Public Class FormMain
         RunInUiWait(
         Sub()
             IsHitTestVisible = False
-            If PanBack.RenderTransform Is Nothing Then
-                Dim TransformPos As New TranslateTransform(0, 0)
-                Dim TransformRotate As New RotateTransform(0)
-                Dim TransformScale As New ScaleTransform(1, 1)
-                PanBack.RenderTransform = New TransformGroup() With {.Children = New TransformCollection({TransformRotate, TransformPos, TransformScale})}
-                AniStart({
-                    AaOpacity(Me, -Opacity, 140, 40, New AniEaseOutFluent(AniEasePower.Weak)),
-                    AaDouble(
-                    Sub(i)
-                        TransformScale.ScaleX += i
-                        TransformScale.ScaleY += i
-                    End Sub, 0.88 - TransformScale.ScaleX, 180),
-                    AaDouble(Sub(i) TransformPos.Y += i, 20 - TransformPos.Y, 180, 0, New AniEaseOutFluent(AniEasePower.Weak)),
-                    AaDouble(Sub(i) TransformRotate.Angle += i, 0.6 - TransformRotate.Angle, 180, 0, New AniEaseInoutFluent(AniEasePower.Weak)),
-                    AaCode(
-                    Sub()
-                        IsHitTestVisible = False
-                        Top = -10000
-                        ShowInTaskbar = False
-                    End Sub, 210),
-                    AaCode(AddressOf EndProgramForce, 230)
-                }, "Form Close")
-            Else
+            IsClosingAccepted = True
+            AniStop("Form Show")
+            Try
+                GetWindowMotion().PlayClose(PanBack, Sub() EndProgramForce())
+            Catch Ex As Exception
+                Logger.Warn(Ex, "关闭效果不可用，直接退出")
                 EndProgramForce()
-            End If
+            End Try
             Logger.Info("收到关闭指令")
         End Sub)
     End Sub
@@ -673,7 +670,7 @@ Public Class FormMain
 
     '最小化
     Private Sub BtnTitleMin_Click() Handles BtnTitleMin.Click
-        WindowState = WindowState.Minimized
+        MinimizeWithMotion()
     End Sub
 
     '背景图片与标题栏
@@ -1400,6 +1397,7 @@ Public Class FormMain
     ''' 通过点击导航栏改变页面。
     ''' </summary>
     Private Sub BtnTitleSelect_Click(sender As MyRadioButton, raiseByMouse As Boolean) Handles BtnTitleSelect0.Check, BtnTitleSelect1.Check, BtnTitleSelect2.Check, BtnTitleSelect3.Check, BtnTitleSelect4.Check
+        UpdateTitleSelection()
         If IsChangingPage Then Return
         PageChangeActual(Val(sender.Tag))
     End Sub
@@ -1459,8 +1457,8 @@ Public Class FormMain
                     AniStart({
                         AaOpacity(PanTitleMain, -PanTitleMain.Opacity, 150),
                         AaX(PanTitleMain, 12 - PanTitleMain.Margin.Left, 150,, New AniEaseInFluent(AniEasePower.Weak)),
-                        AaOpacity(PanTitleInner, 1 - PanTitleInner.Opacity, 150, 200),
-                        AaX(PanTitleInner, -PanTitleInner.Margin.Left, 350, 200, New AniEaseOutBack),
+                        AaOpacity(PanTitleInner, 1 - PanTitleInner.Opacity, 120, 30),
+                        AaX(PanTitleInner, -PanTitleInner.Margin.Left, 180, 30, New AniEaseOutFluent),
                         AaCode(Sub() PanTitleMain.Visibility = Visibility.Collapsed,, True)
                     }, "FrmMain Titlebar FirstLayer")
                     PageStack.Insert(0, PageCurrent)
@@ -1520,55 +1518,28 @@ Public Class FormMain
     End Sub
     Private Sub PageChangeAnim(TargetLeft As FrameworkElement, TargetRight As FrameworkElement)
         AniStop("FrmMain LeftChange")
-        AniStop("PageLeft PageChange") '停止左边栏变更导致的右页面切换动画，防止它与本动画一起触发多次 PageOnEnter
-        AniControlEnabled += 1
-        '清除新页面关联性
-        If TargetLeft.Parent IsNot Nothing Then TargetLeft.SetValue(ContentPresenter.ContentProperty, Nothing)
-        If TargetRight IsNot Nothing AndAlso TargetRight.Parent IsNot Nothing Then TargetRight.SetValue(ContentPresenter.ContentProperty, Nothing)
-        PageLeft = TargetLeft
-        PageRight = TargetRight
-        '触发页面通用动画
-        CType(PanMainLeft.Child, MyPageLeft).TriggerHideAnimation()
-        CType(PanMainRight.Child, MyPageRight).PageOnExit()
-        AniControlEnabled -= 1
-        '执行动画
-        AniStart({
-            AaCode(
-            Sub()
-                AniControlEnabled += 1
-                '把新页面添加进容器
-                PanMainLeft.Child = PageLeft
-                PageLeft.Opacity = 0
-                PanMainLeft.Background = Nothing
-                AniControlEnabled -= 1
-                RunInUi(Sub() PanMainLeft_Resize(PanMainLeft.ActualWidth), True)
-            End Sub, 110),
-            AaCode(
-            Sub()
-                '延迟触发页面通用动画，以使得在 Loaded 事件中加载的控件得以处理
-                PageLeft.Opacity = 1
-                PageLeft.TriggerShowAnimation()
-            End Sub, 30, True)
-        }, "FrmMain PageChangeLeft")
-        AniStart({
-            AaCode(
-            Sub()
-                AniControlEnabled += 1
-                CType(PanMainRight.Child, MyPageRight).PageOnForceExit()
-                '把新页面添加进容器
-                PanMainRight.Child = PageRight
-                PageRight.Opacity = 0
-                PanMainRight.Background = Nothing
-                AniControlEnabled -= 1
-                RunInUi(Sub() BtnExtraBack.ShowRefresh(), True)
-            End Sub, 110),
-            AaCode(
-            Sub()
-                '延迟触发页面通用动画，以使得在 Loaded 事件中加载的控件得以处理
-                PageRight.Opacity = 1
-                PageRight.PageOnEnter()
-            End Sub, 30, True)
-        }, "FrmMain PageChangeRight")
+        AniStop("PageLeft PageChange")
+        AniStop("FrmMain PageChangeLeft")
+        AniStop("FrmMain PageChangeRight")
+        PageLeft = CType(TargetLeft, MyPageLeft)
+        PageRight = CType(TargetRight, MyPageRight)
+        MountLeftPage(PanMainLeft, PageLeft)
+        MountRightPage(PanMainRight, PageRight)
+        PanMainLeft.IsHitTestVisible = True
+        RunInUi(Sub() PanMainLeft_Resize(PanMainLeft.ActualWidth), True)
+        RunInUi(Sub() BtnExtraBack.ShowRefresh(), True)
+    End Sub
+    Friend Sub SwitchRightPage(Target As MyPageRight)
+        AniStop("FrmMain PageChangeRight")
+        AniStop("PageLeft PageChange")
+        PageRight = Target
+        MountRightPage(PanMainRight, Target)
+    End Sub
+    Private Sub UpdateTitleSelection(Optional Animate As Boolean = True)
+        If PanTitleTabs IsNot Nothing Then MoveTitleSelection(PanTitleTabs, PanTitleSelect, TitleSelection, Animate)
+    End Sub
+    Private Sub TitleTabs_LayoutChanged() Handles PanTitleTabs.SizeChanged
+        UpdateTitleSelection(False)
     End Sub
     ''' <summary>
     ''' 退出子界面。
@@ -1582,8 +1553,8 @@ Public Class FormMain
             AniStart({
                 AaOpacity(PanTitleInner, -PanTitleInner.Opacity, 150),
                 AaX(PanTitleInner, -18 - PanTitleInner.Margin.Left, 150,, New AniEaseInFluent),
-                AaOpacity(PanTitleMain, 1 - PanTitleMain.Opacity, 150, 200),
-                AaX(PanTitleMain, -PanTitleMain.Margin.Left, 350, 200, New AniEaseOutBack(AniEasePower.Weak)),
+                AaOpacity(PanTitleMain, 1 - PanTitleMain.Opacity, 120, 30),
+                AaX(PanTitleMain, -PanTitleMain.Margin.Left, 180, 30, New AniEaseOutFluent),
                 AaCode(Sub() PanTitleInner.Visibility = Visibility.Collapsed,, True)
             }, "FrmMain Titlebar FirstLayer")
             PageStack.Clear()

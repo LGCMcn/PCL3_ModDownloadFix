@@ -64,6 +64,12 @@ Public Class SettingService
         Settings.Set(Key, NewValue, Instance:=PageInstanceLeft.Instance)
     End Sub
 
+    Public Shared Function RestartNotice(Key As String, User As Boolean) As String
+        If Not User Then Return Nothing
+        If {"UiStartupAnimation", "UiLauncherLogo", "UiLauncherEmail"}.Contains(Key) Then Return "设置已保存，下次启动生效"
+        Return Nothing
+    End Function
+
 End Class
 
 Public Interface ISettingControl

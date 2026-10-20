@@ -13,17 +13,28 @@ Public Class MyPageLeft
     End Property
     Public Shared ReadOnly AnimatedControlProperty As DependencyProperty = DependencyProperty.Register("AnimatedControl", GetType(String), GetType(MyPageLeft), New PropertyMetadata(Nothing))
 
+    Public Sub CancelPageAnimation()
+        AniStop("PageLeft PageChange " & Uuid)
+        Opacity = 1 : RenderTransform = Nothing
+        If AnimatedControl Is Nothing Then Return
+        For Each Element In GetAllAnimControls(True)
+            Element.Opacity = 1 : Element.RenderTransform = Nothing
+            If TypeOf Element Is MyListItem Then CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
+        Next
+    End Sub
     Public Sub TriggerShowAnimation()
+        CancelPageAnimation()
+        If Not NavigationMotionEnabled() Then Return
         If AnimatedControl Is Nothing Then
             '缩放动画
             If TypeOf RenderTransform IsNot ScaleTransform Then
-                RenderTransform = New ScaleTransform(0.96, 0.96)
+                RenderTransform = New ScaleTransform(0.99, 0.99)
                 RenderTransformOrigin = New Point(0.5, 0.5)
             End If
-            Opacity = 0
+            Opacity = 0.94
             AniStart({
-                AaScaleTransform(Me, 1 - CType(RenderTransform, ScaleTransform).ScaleX, 400,, New AniEaseOutBack(2)),
-                AaOpacity(Me, 1, 100)
+                AaScaleTransform(Me, 1 - CType(RenderTransform, ScaleTransform).ScaleX, 170,, New AniEaseOutFluent),
+                AaOpacity(Me, 0.06, 90)
             }, "PageLeft PageChange " & Uuid)
         Else
             '逐个进入动画
@@ -37,20 +48,19 @@ Public Class MyPageLeft
                     Element.RenderTransform = New TranslateTransform(0, 0)
                     If TypeOf Element Is MyListItem Then CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
                 Else
-                    Element.Opacity = 0
-                    Element.RenderTransform = New TranslateTransform(-25, 0)
-                    If TypeOf Element Is MyListItem Then CType(Element, MyListItem).IsMouseOverAnimationEnabled = False
-                    AniList.Add(AaOpacity(Element, If(TypeOf Element Is TextBlock, 0.6, 1), 100, Delay, New AniEaseOutFluent(AniEasePower.Weak)))
-                    AniList.Add(AaTranslateX(Element, 5, 200, Delay, New AniEaseOutFluent))
-                    AniList.Add(AaTranslateX(Element, 20, 300, Delay, New AniEaseOutBack(AniEasePower.Weak)))
+                    Element.Opacity = 0.94
+                    Element.RenderTransform = New TranslateTransform(-8, 0)
+                    If TypeOf Element Is MyListItem Then CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
+                    AniList.Add(AaOpacity(Element, If(TypeOf Element Is TextBlock, -0.34, 0.06), 90, Delay, New AniEaseOutFluent(AniEasePower.Weak)))
+                    AniList.Add(AaTranslateX(Element, 8, 160, Delay, New AniEaseOutFluent))
                     If TypeOf Element Is MyListItem Then
                         AniList.Add(AaCode(
                         Sub()
                             CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
                             CType(Element, MyListItem).RefreshColor(Me, New EventArgs)
-                        End Sub, Delay + 280))
+                        End Sub, Delay + 160))
                     End If
-                    Delay += Math.Max(15 - Id, 7) * 2
+                    Delay = Math.Min(18, Delay + 6)
                     Id += 1
                 End If
             Next

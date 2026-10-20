@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -35,6 +35,7 @@ class SmokeTests {
             // A dispatcher frame can raise WPF Startup even without Application.Run.
             // Detach the production startup before any test initializes WPF or pumps messages.
             var startup=app.GetType("PCL.Application").GetMethod("Application_Startup",BindingFlags.Instance|BindingFlags.NonPublic);
+            application.ShutdownMode=System.Windows.ShutdownMode.OnExplicitShutdown;
             application.Startup-=(System.Windows.StartupEventHandler)Delegate.CreateDelegate(typeof(System.Windows.StartupEventHandler),application,startup);
 
             var resource=app.GetManifestResourceNames().Single(n=>n.EndsWith("Resources.resources"));
@@ -62,6 +63,10 @@ class SmokeTests {
             if(args.Contains("--visual")) {
                 app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
                 VisualChecks();Console.WriteLine("RESULT: "+passed+" passed");Environment.Exit(0);
+            }
+            if(args.Contains("--interaction")) {
+                app.GetType("PCL.Application").GetMethod("InitializeComponent").Invoke(application,null);
+                InteractionChecks();Console.WriteLine("RESULT: "+passed+" passed");Environment.Exit(0);
             }
             if(args.Contains("--extra-network")) {
                 Call("ModBase","RunInUi"); // Initialize UI thread identity before creating the request worker.
@@ -119,6 +124,186 @@ class SmokeTests {
         } catch(Exception e) { Console.Error.WriteLine(e); Environment.Exit(1); return 1; }
     }
     static int PaletteField(object palette,string name) {return (int)palette.GetType().GetField(name).GetValue(palette);}
+    static void SetNormalPreference(string key,bool value) {
+        var settings=app.GetType("PCL.Settings");var entries=settings.GetField("Entries",BindingFlags.Public|BindingFlags.Static).GetValue(null) as System.Collections.IDictionary;
+        if(entries==null) throw new Exception("Settings entries unavailable");
+        var entry=entries[key];var field=entry.GetType().GetField("Source");field.SetValue(entry,Enum.Parse(field.FieldType,"Normal"));
+        Call("Settings","Set",key,value);
+    }
+    static void InteractionChecks() {
+        Call("ModBase","RunInUi");
+        app.GetType("PCL.ModAnimation").GetMethod("AniStart",Type.EmptyTypes).Invoke(null,null);
+        Check((bool)Call("Settings","Get","UiSmoothScroll")&&(bool)Call("Settings","Get","UiNavigationAnimation"),"scroll and navigation preferences default enabled");
+        var viewer=(System.Windows.Controls.ScrollViewer)Activator.CreateInstance(app.GetType("PCL.MyScrollViewer"));
+        viewer.Width=350;viewer.Height=240;viewer.VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto;
+        viewer.Content=new System.Windows.Controls.Border{Height=2800,Background=System.Windows.Media.Brushes.White};
+        viewer.Measure(new System.Windows.Size(350,240));viewer.Arrange(new System.Windows.Rect(0,0,350,240));viewer.UpdateLayout();Pump(40);
+        Check(viewer.ScrollableHeight>2000,"smooth scroll uses an actual scrollable WPF layout");
+        Action<double> scroll=d=>viewer.GetType().GetMethod("PerformVerticalOffsetDelta").Invoke(viewer,new object[]{d});
+        bool motion=(bool)Call("ModVisualExperience","NavigationScrollEnabled");
+        scroll(240);Pump(60);
+        double middle=viewer.VerticalOffset;
+        Check(!motion || middle>0&&middle<240,"scroll starts promptly and passes through intermediate offsets");
+        scroll(-60);double turn=viewer.VerticalOffset;Pump(300);viewer.UpdateLayout();
+        Check(Math.Abs(viewer.VerticalOffset-Math.Max(0,turn-60))<2,"reverse input cancels pending forward distance immediately");
+        viewer.ScrollToVerticalOffset(0);viewer.UpdateLayout();
+        for(int i=0;i<12;i++)scroll(30);Pump(320);viewer.UpdateLayout();
+        Check(Math.Abs(viewer.VerticalOffset-360)<2,"rapid wheel input reaches one accumulated target without stacked animations");
+        Check(!(bool)viewer.GetType().GetProperty("HasSmoothScroll").GetValue(viewer),"scroll clock is released when motion finishes");
+        scroll(100000);Pump(300);viewer.UpdateLayout();Check(Math.Abs(viewer.VerticalOffset-viewer.ScrollableHeight)<2,"scroll target clamps to the actual viewport boundary");
+        viewer.GetType().GetMethod("ScrollToHome").Invoke(viewer,null);viewer.UpdateLayout();Check(viewer.VerticalOffset==0,"return to top cancels pending wheel motion");
+        scroll(100);viewer.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.FrameworkElement.UnloadedEvent));
+        Check(!(bool)viewer.GetType().GetProperty("HasSmoothScroll").GetValue(viewer),"unloading the viewer cancels its animation clock");
+        var host=new System.Windows.Controls.Border();var first=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyPageRight"));
+        first.GetType().GetProperty("Child").SetValue(first,new System.Windows.Controls.TextBlock{Text="first"});
+        var last=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyPageRight"));last.GetType().GetProperty("Child").SetValue(last,new System.Windows.Controls.TextBlock{Text="last"});
+        int firstEnter=0,lastEnter=0;
+        var enter=first.GetType().GetEvent("PageEnter");enter.AddEventHandler(first,Delegate.CreateDelegate(enter.EventHandlerType,new Counter(()=>firstEnter++),typeof(Counter).GetMethod("Invoke")));
+        enter.AddEventHandler(last,Delegate.CreateDelegate(enter.EventHandlerType,new Counter(()=>lastEnter++),typeof(Counter).GetMethod("Invoke")));
+        Call("ModNavigation","MountRightPage",host,first);Check(ReferenceEquals(host.Child,first),"page is mounted synchronously before any exit animation delay");
+        Call("ModNavigation","MountRightPage",host,last);Pump(60);
+        Check(firstEnter==0&&lastEnter==1&&ReferenceEquals(host.Child,last),"rapid navigation enters only the latest requested page");
+        Pump(300);Check(last.GetType().GetProperty("PageState").GetValue(last).ToString()=="ContentStay","page reaches a usable stable state within the short transition");
+        Call("ModNavigation","MountRightPage",host,last);Pump(30);Check(lastEnter==1,"selecting the current page does not enqueue another entry");
+        Check(((string)Call("SettingService","RestartNotice","UiStartupAnimation",true)).Contains("下次启动"),"user startup toggle provides a restart hint");
+        Check(Call("SettingService","RestartNotice","UiStartupAnimation",false)==null,"loading saved preferences never emits a restart hint");
+        Check(Call("SettingService","RestartNotice","UiSmoothScroll",true)==null,"live scroll preference does not show an unnecessary restart hint");
+        SetNormalPreference("UiSmoothScroll",false);
+        viewer.GetType().GetMethod("ScrollToHome").Invoke(viewer,null);viewer.UpdateLayout();scroll(80);viewer.UpdateLayout();
+        Check(viewer.VerticalOffset==80&&!(bool)viewer.GetType().GetProperty("HasSmoothScroll").GetValue(viewer),"disabling smooth scrolling applies wheel movement directly");
+        SetNormalPreference("UiSmoothScroll",true);
+        SetNormalPreference("UiNavigationAnimation",false);
+        Call("ModNavigation","MountRightPage",host,first);Pump(25);
+        Check(first.GetType().GetProperty("PageState").GetValue(first).ToString()=="ContentStay","disabling navigation motion enters content without an animation wait");
+        SetNormalPreference("UiNavigationAnimation",true);
+        HeaderChecks();
+        WindowChecks();
+        CapturePage(viewer,350,240,"smooth-scroll-preview.png");
+    }
+    static void HeaderChecks() {
+        var doc=System.Xml.Linq.XDocument.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"FormMain.preview.xaml"));
+        System.Xml.Linq.XNamespace x="http://schemas.microsoft.com/winfx/2006/xaml";
+        var source=new System.Xml.Linq.XElement(doc.Descendants().First(e=>(string)e.Attribute(x+"Name")=="PanTitle"));
+        var native="clr-namespace:PCL;assembly=Plain Craft Launcher 2";
+        foreach(var element in source.DescendantsAndSelf().Where(e=>e.Name.NamespaceName=="clr-namespace:PCL").ToList())element.Name=System.Xml.Linq.XName.Get(element.Name.LocalName,native);
+        source.SetAttributeValue(System.Xml.Linq.XNamespace.Xmlns+"local",native);
+        var header=(System.Windows.Controls.Grid)System.Windows.Markup.XamlReader.Parse(source.ToString());
+        var preview=new System.Windows.Window{Content=header,Width=1280,Height=48,WindowStyle=System.Windows.WindowStyle.None,ShowInTaskbar=false,ShowActivated=false,Left=40,Top=40};preview.Show();Pump(80);
+        var tabs=(System.Windows.FrameworkElement)header.FindName("PanTitleTabs");var selector=(System.Windows.Controls.StackPanel)header.FindName("PanTitleSelect");
+        var indicator=(System.Windows.Controls.Border)header.FindName("TitleSelection");var badge=(System.Windows.FrameworkElement)header.FindName("ThirdPartyVersionBadge");
+        var mark=(System.Windows.FrameworkElement)header.FindName("ThirdPartyRomanMark");
+        foreach(int width in new[]{774,950,1280}) {
+            preview.Width=width;header.Width=width;header.Height=48;header.Measure(new System.Windows.Size(width,48));header.Arrange(new System.Windows.Rect(0,0,width,48));header.UpdateLayout();
+            Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,false);
+            double badgeRight=badge.TranslatePoint(new System.Windows.Point(badge.ActualWidth,0),header).X;
+            double firstLeft=selector.TranslatePoint(new System.Windows.Point(0,0),header).X;
+            Check(mark.Height==16&&firstLeft-badgeRight>=12,"compact roman mark and clear branding-to-navigation gap at width "+width);
+            CapturePage(header,width,48,"titlebar-"+width+".png");
+        }
+
+        var chosen=selector.Children[4];chosen.GetType().GetMethod("SetChecked").Invoke(chosen,new object[]{true,false,false});
+        Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);Pump(40);
+        var transform=(System.Windows.Media.TranslateTransform)indicator.RenderTransform;
+        double intermediate=transform.X,finish=((System.Windows.FrameworkElement)chosen).TranslatePoint(new System.Windows.Point(0,0),tabs).X;
+
+        Check(!(bool)Call("ModVisualExperience","NavigationMotionEnabled")||intermediate>0&&intermediate<finish,"top selection capsule moves through intermediate positions");
+        for(int i=0;i<25;i++) {
+            var button=selector.Children[i%5];button.GetType().GetMethod("SetChecked").Invoke(button,new object[]{true,false,false});
+            Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);
+        }
+        Pump(300);
+        Check(Math.Abs(transform.X-finish)<1&&!transform.HasAnimatedProperties,"rapid tab selection finishes on the latest tab and releases its clock");
+        preview.Close();
+        foreach(var pageType in new[]{"PageSetupUI","PageOtherTest"}) {
+            var page=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL."+pageType));
+            foreach(var checkbox in Descendants(page).Where(e=>e.GetType().Name=="MyCheckBox")) {
+                string key=(string)Call("SettingService","GetKey",checkbox);
+                if(new[]{"UiFrostedGlass","UiStartupAnimation","UiErrorAnimation","UiIconAnimation","UiNavigationAnimation","UiSmoothScroll","UiCloseAnimation","UiMinimizeAnimation"}.Contains(key)) {
+                    string text=(string)checkbox.GetType().GetProperty("Text").GetValue(checkbox);
+                    Check(!text.Contains("（")&&!text.Contains("(")&&!text.Contains("下次"),"effect setting label is concise: "+key);
+                }
+            }
+        }
+    }
+    static System.Collections.Generic.IEnumerable<System.Windows.DependencyObject> Descendants(System.Windows.DependencyObject node) {
+        foreach(var item in System.Windows.LogicalTreeHelper.GetChildren(node)) {
+            var child=item as System.Windows.DependencyObject;if(child==null)continue;yield return child;
+            foreach(var descendant in Descendants(child))yield return descendant;
+        }
+    }
+    static void WindowChecks() {
+        var type=app.GetType("PCL.WindowMotion");
+        var targetMethod=type.GetMethod("ChooseTaskbarTarget",BindingFlags.Static|BindingFlags.NonPublic);
+        var screen=new System.Windows.Rect(-1920,0,1920,1080);var source=new System.Windows.Rect(-1400,180,600,400);
+        var works=new[]{new System.Windows.Rect(-1880,0,1880,1080),new System.Windows.Rect(-1920,40,1920,1040),new System.Windows.Rect(-1920,0,1880,1080),new System.Windows.Rect(-1920,0,1920,1040),screen};
+        for(int i=0;i<works.Length;i++) {
+            object[] args={screen,works[i],source,0};var target=(System.Windows.Rect)targetMethod.Invoke(null,args);
+            Check((int)args[3]==(i<4?i:3)&&screen.Contains(target),"taskbar destination handles edge/negative monitor coordinates: "+i);
+        }
+        var content=new System.Windows.Controls.Grid{Background=System.Windows.Media.Brushes.AliceBlue};
+        content.Children.Add(new System.Windows.Controls.Border{Height=48,VerticalAlignment=System.Windows.VerticalAlignment.Top,Background=System.Windows.Media.Brushes.DodgerBlue,Child=new System.Windows.Controls.TextBlock{Text="PCL  Ⅲ     第三方版本",FontSize=20,Margin=new System.Windows.Thickness(20,8,0,0),Foreground=System.Windows.Media.Brushes.White}});
+        content.Children.Add(new System.Windows.Controls.TextBlock{Text="启动  /  下载  /  设置",FontSize=22,Margin=new System.Windows.Thickness(32,100,0,0),Foreground=System.Windows.Media.Brushes.DodgerBlue});
+        var window=new System.Windows.Window{Content=content,Width=600,Height=400,Left=120,Top=120,ShowInTaskbar=false,ShowActivated=false,WindowStyle=System.Windows.WindowStyle.None,AllowsTransparency=true,Background=System.Windows.Media.Brushes.Transparent,Opacity=.9};
+        window.Show();Pump(80);
+        var image=new System.Windows.Media.Imaging.RenderTargetBitmap(600,400,96,96,System.Windows.Media.PixelFormats.Pbgra32);image.Render(content);image.Freeze();
+        var surfaceType=app.GetType("PCL.TaskbarWarpSurface");
+        var progress=(System.Windows.DependencyProperty)surfaceType.GetField("ProgressProperty").GetValue(null);
+        for(int edge=0;edge<4;edge++) {
+            var target=edge==0?new System.Windows.Rect(4,470,4,48):edge==1?new System.Windows.Rect(300,4,48,4):edge==2?new System.Windows.Rect(790,470,4,48):new System.Windows.Rect(300,590,48,4);
+            var warp=(System.Windows.FrameworkElement)Activator.CreateInstance(surfaceType,new object[]{image,new System.Windows.Rect(80,80,600,400),target,edge,800d,640d});
+            var mesh=(System.Windows.Media.Media3D.MeshGeometry3D)surfaceType.GetField("Mesh",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(warp);
+            bool valid=true;
+            foreach(double p in new[]{0d,.1,.25,.5,.75,1d}) {
+                warp.SetValue(progress,p);
+                valid &= mesh.Positions.Count==297&&mesh.Positions.All(point=>!double.IsNaN(point.X)&&!double.IsInfinity(point.X)&&!double.IsNaN(point.Y)&&!double.IsInfinity(point.Y));
+                if(p==.5)CapturePage(warp,800,640,"window-warp-"+edge+".png");
+                if(p==1)valid &= Math.Abs(mesh.Positions[0].X-target.X)<.01&&Math.Abs(-mesh.Positions[0].Y-target.Y)<.01;
+            }
+            Check(valid,"bounded mesh reaches its taskbar endpoint: edge "+edge);
+            surfaceType.GetMethod("Release").Invoke(warp,null);
+        }
+        SetNormalPreference("UiMinimizeAnimation",true);SetNormalPreference("UiCloseAnimation",true);
+        var motion=Activator.CreateInstance(type,new object[]{window});
+        Action minimize=()=>type.GetMethod("Minimize").Invoke(motion,null);
+        Func<bool> active=()=> (bool)type.GetProperty("IsMinimizing").GetValue(motion);
+        minimize();bool animated=active();int count=System.Windows.Application.Current.Windows.Count;
+        minimize();Check(System.Windows.Application.Current.Windows.Count==count,"repeated minimize does not create another overlay");
+        if(animated) {
+            Pump(80);Check(window.Opacity==0&&active(),"snapshot deforms while the real window is hidden");
+            Pump(500);
+        }
+        Check(window.WindowState==System.Windows.WindowState.Minimized&&!active()&&Math.Abs(window.Opacity-.9)<.01,"minimize finishes with real state and releases overlay/opacity");
+        window.WindowState=System.Windows.WindowState.Normal;Pump(60);
+        Check(Math.Abs(window.Width-600)<1&&Math.Abs(window.Left-120)<1&&window.Opacity==.9,"restoring keeps the original window bounds and transparency");
+        minimize();type.GetMethod("CancelMinimize").Invoke(motion,null);
+        if(window.WindowState==System.Windows.WindowState.Minimized)window.WindowState=System.Windows.WindowState.Normal;
+        Check(!active()&&window.Opacity==.9,"cancelling minimize releases the temporary window and restores opacity");
+        SetNormalPreference("UiMinimizeAnimation",false);minimize();
+        Check(window.WindowState==System.Windows.WindowState.Minimized&&!active(),"disabled minimize animation applies native state directly");
+        window.WindowState=System.Windows.WindowState.Normal;Pump(60);
+        int closed=0;var close=type.GetMethod("PlayClose");close.Invoke(motion,new object[]{content,new Action(()=>closed++)});
+        close.Invoke(motion,new object[]{content,new Action(()=>closed+=100)});
+        Pump(65);
+        Check(!(bool)Call("ModVisualExperience","MotionAvailable")||window.Opacity>0&&window.Opacity<.9,"close passes through a visible fade and small shrink");
+        Pump(250);
+        Check(closed==1&&(!(bool)Call("ModVisualExperience","MotionAvailable")||window.Opacity==0)&&!window.HasAnimatedProperties,"close callback runs once and animation clocks are removed");
+        ((IDisposable)motion).Dispose();
+        SetNormalPreference("UiCloseAnimation",false);motion=Activator.CreateInstance(type,new object[]{window});
+        close.Invoke(motion,new object[]{content,new Action(()=>closed++)});
+        Check(closed==2&&window.Opacity==.9,"disabled close animation calls shutdown immediately");
+        ((IDisposable)motion).Dispose();
+        var released=Enumerable.Range(0,30).Select(i=>MakeWindowMotionProbe(window)).ToList();
+        Pump(40);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
+        Check(released.All(reference=>!reference.IsAlive),"disposed motion controllers detach native hooks and window handlers");
+        window.Close();
+        SetNormalPreference("UiCloseAnimation",true);SetNormalPreference("UiMinimizeAnimation",true);
+    }
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static WeakReference MakeWindowMotionProbe(System.Windows.Window window) {
+        var motion=(IDisposable)Activator.CreateInstance(app.GetType("PCL.WindowMotion"),new object[]{window});
+        motion.Dispose();return new WeakReference(motion);
+    }
+    public sealed class Counter {readonly Action action;public Counter(Action a){action=a;} public void Invoke(){action();}}
     static void Pump(int milliseconds) {
         var frame=new System.Windows.Threading.DispatcherFrame();
         var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(milliseconds)};

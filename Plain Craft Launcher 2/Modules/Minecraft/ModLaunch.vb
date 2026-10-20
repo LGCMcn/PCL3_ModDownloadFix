@@ -1,4 +1,4 @@
-Public Module ModLaunch
+﻿Public Module ModLaunch
 
 #Region "开始"
 
@@ -2211,7 +2211,7 @@ IgnoreCustomSkin:
             Case 4
                 '最小化
                 McLaunchLog("已根据设置，在启动后最小化启动器")
-                RunInUi(Sub() FrmMain.WindowState = WindowState.Minimized)
+                RunInUi(Sub() FrmMain.MinimizeWithMotion())
             Case 5
                 '啥都不干
         End Select

@@ -221,8 +221,11 @@ Public Class MyCheckBox
         Return Checked.ToString
     End Function
 
-    Private Sub SaveSetting() Handles Me.Change
+    Private Sub SaveSetting(sender As Object, user As Boolean) Handles Me.Change
         SettingService.SaveSetting(Me)
+        If AniControlEnabled <> 0 Then Return
+        Dim Notice = SettingService.RestartNotice(SettingService.GetKey(Me), user)
+        If Notice IsNot Nothing Then Hint(Notice, HintType.Blue, False)
     End Sub
 
 #End Region

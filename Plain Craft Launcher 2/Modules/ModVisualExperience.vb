@@ -23,6 +23,12 @@ Friend Module ModVisualExperience
     Public Function MotionAvailable() As Boolean
         Return SystemParameters.ClientAreaAnimation AndAlso Not SystemParameters.HighContrast
     End Function
+    Public Function NavigationMotionEnabled() As Boolean
+        Return MotionAvailable() AndAlso Settings.Get(Of Boolean)("UiNavigationAnimation")
+    End Function
+    Public Function NavigationScrollEnabled() As Boolean
+        Return MotionAvailable() AndAlso Settings.Get(Of Boolean)("UiSmoothScroll")
+    End Function
 
     Public Sub ApplyVisualExperience()
         If FrmMain Is Nothing Then Return
