@@ -1,10 +1,11 @@
-Imports System.Windows.Media.Animation
+﻿Imports System.Windows.Media.Animation
 
 Public Class MyScrollViewer
     Inherits ScrollViewer
     Public Property DeltaMult As Double = 1
     Private TargetOffset As Double
     Private IsScrolling As Boolean
+    Private HasPendingDirectOffset As Boolean
     Private SuppressOffset As Boolean
     Private ScrollGeneration As Integer
     Private Shared ReadOnly AnimatedOffsetProperty As DependencyProperty = DependencyProperty.Register(
@@ -37,11 +38,12 @@ Public Class MyScrollViewer
     Public Sub PerformVerticalOffsetDelta(Delta As Double)
         If Double.IsNaN(Delta) OrElse Double.IsInfinity(Delta) Then Return
         Dim Current = VerticalOffset, Movement = Delta * DeltaMult
-        Dim Origin = If(IsScrolling, TargetOffset, Current)
+        Dim Origin = If(IsScrolling OrElse HasPendingDirectOffset, TargetOffset, Current)
         If IsScrolling AndAlso Math.Sign(Movement) <> Math.Sign(TargetOffset - Current) Then Origin = Current
         Dim Destination = Math.Max(0, Math.Min(ScrollableHeight, Origin + Movement))
         StopSmoothScroll() : TargetOffset = Destination
         If Not NavigationScrollEnabled() OrElse Math.Abs(Destination - Current) < 0.25 Then
+            HasPendingDirectOffset = Math.Abs(Destination - Current) >= 0.25
             ScrollToVerticalOffset(Destination) : Return
         End If
         IsScrolling = True
@@ -60,7 +62,7 @@ Public Class MyScrollViewer
         BeginAnimation(AnimatedOffsetProperty, Motion, HandoffBehavior.SnapshotAndReplace)
     End Sub
     Public Sub StopSmoothScroll()
-        ScrollGeneration += 1 : IsScrolling = False
+        ScrollGeneration += 1 : IsScrolling = False : HasPendingDirectOffset = False
         SuppressOffset = True
         BeginAnimation(AnimatedOffsetProperty, Nothing)
         SetValue(AnimatedOffsetProperty, VerticalOffset)
@@ -79,7 +81,8 @@ Public Class MyScrollViewer
     End Sub
     Private Sub Changed(sender As Object, e As ScrollChangedEventArgs) Handles Me.ScrollChanged
         If e.ExtentHeightChange <> 0 OrElse e.ViewportHeightChange <> 0 Then StopSmoothScroll()
-        If Not IsScrolling Then TargetOffset = VerticalOffset
+        If e.VerticalChange <> 0 Then HasPendingDirectOffset = False
+        If Not IsScrolling AndAlso Not HasPendingDirectOffset Then TargetOffset = VerticalOffset
         If FrmMain IsNot Nothing AndAlso (e.VerticalChange <> 0 OrElse e.ViewportHeightChange <> 0) Then FrmMain.BtnExtraBack.ShowRefresh()
     End Sub
     Private Sub VisibilityChanged() Handles Me.IsVisibleChanged

@@ -171,6 +171,9 @@ class SmokeTests {
         SetNormalPreference("UiSmoothScroll",false);
         viewer.GetType().GetMethod("ScrollToHome").Invoke(viewer,null);viewer.UpdateLayout();scroll(80);viewer.UpdateLayout();
         Check(viewer.VerticalOffset==80&&!(bool)viewer.GetType().GetProperty("HasSmoothScroll").GetValue(viewer),"disabling smooth scrolling applies wheel movement directly");
+        viewer.GetType().GetMethod("ScrollToHome").Invoke(viewer,null);viewer.UpdateLayout();
+        for(int i=0;i<12;i++)scroll(30);Pump(80);viewer.UpdateLayout();
+        Check(Math.Abs(viewer.VerticalOffset-360)<2,"disabled motion retains all wheel deltas queued within one frame");
         SetNormalPreference("UiSmoothScroll",true);
         SetNormalPreference("UiNavigationAnimation",false);
         Call("ModNavigation","MountRightPage",host,first);Pump(25);

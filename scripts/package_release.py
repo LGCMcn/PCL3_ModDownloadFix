@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import zipfile
 
-VERSION = '1.2.1'
+VERSION = '1.2.2'
 EXECUTABLE = 'Plain Craft Launcher (PCL) LGCMcn 下载修复版.exe'
 
 def sha(path):
@@ -85,9 +85,11 @@ def main():
 | 源码提交 | `{commit}` |
 | 平台 | Windows x64 / .NET Framework 4.8 |
 | Windows 主色 | 固定蓝色 |
-| 本地验证 | 209 项检查通过；含真实下载、窗口动画、来源查询与更新恢复测试 |
+| 本地验证 | 210 项检查通过；含真实下载、窗口动画、来源查询与更新恢复测试 |
 
 ## 更新内容
+
+- [ - ] 修复关闭平滑滚动或系统减少动画时，同一帧的连续滚动丢失累计距离。
 
 - [ + ] 最小化时窗口向所在屏幕的任务栏边缘收拢变形，结束后释放快照；低渲染能力或远程会话自动降级。
 - [ + ] 关闭时轻微缩至 94% 并淡出；关闭动画与最小化动画分别可关闭，立即生效。

@@ -4,7 +4,7 @@
     xmlns:local="clr-namespace:PCL"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
     x:Name="WindMain" x:Class="FormMain" Style="{StaticResource MyWindow}"
-    AllowDrop="True" Topmost="True" Title="Plain Craft Launcher (PCL) LGCMcn 下载修复版 v1.2.1" AllowsTransparency="True" MinHeight="470" MinWidth="810"
+    AllowDrop="True" Topmost="True" Title="Plain Craft Launcher (PCL) LGCMcn 下载修复版 v1.2.2" AllowsTransparency="True" MinHeight="470" MinWidth="810"
     ScrollViewer.VerticalScrollBarVisibility="Disabled" Icon="/Plain Craft Launcher 2;component/Images/icon.ico" WindowStyle="None" 
     ResizeMode="CanMinimize" Background="{x:Null}" d:DesignWidth="870" d:DesignHeight="520" Width="850" Height="500" 
     RenderTransformOrigin="0.5,0.5">
@@ -117,7 +117,7 @@
                         </Grid.ColumnDefinitions>
                         <Path x:Name="ShapeTitleLogo" Data="M26,29 v-25 h6 a7,7 180 0 1 0,14 h-6 M62.5,6.5 a10,11.5 180 1 0 0,18 M71,2.5 v24.5 h13.5" SnapsToDevicePixels="False" UseLayoutRounding="False" IsHitTestVisible="False" HorizontalAlignment="Left" Margin="19,15.5,0,15.5" Stretch="fill" Stroke="White" StrokeThickness="2.2" Width="39" />
                         <Path x:Name="ThirdPartyRomanMark" Data="M0,0 V16 M5,0 V16 M10,0 V16" Stroke="White" StrokeThickness="1.6" Width="10" Height="16" Stretch="Fill" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="72,0,0,0" IsHitTestVisible="False" Visibility="{Binding Visibility, ElementName=ShapeTitleLogo}" />
-                        <Border x:Name="ThirdPartyVersionBadge" Margin="104,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#38FFFFFF" CornerRadius="3" IsHitTestVisible="False"><TextBlock Text="第三方版本 v1.2.1" Foreground="White" FontSize="10" Margin="5,3" /></Border>
+                        <Border x:Name="ThirdPartyVersionBadge" Margin="104,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#38FFFFFF" CornerRadius="3" IsHitTestVisible="False"><TextBlock Text="第三方版本 v1.2.2" Foreground="White" FontSize="10" Margin="5,3" /></Border>
                         <TextBlock x:Name="LabTitleLogo" Visibility="Collapsed" SnapsToDevicePixels="False" UseLayoutRounding="False" IsHitTestVisible="False" HorizontalAlignment="Left" Margin="18,0,0,0" Foreground="White" FontSize="17" VerticalAlignment="Center" />
                         <local:MyImage x:Name="ImageTitleLogo" SnapsToDevicePixels="False" UseLayoutRounding="False" IsHitTestVisible="False" HorizontalAlignment="Left" Margin="7" VerticalAlignment="Center" Visibility="Collapsed" />
                         <Grid Grid.Column="1" x:Name="PanTitleTabs" VerticalAlignment="Center" Height="27" Margin="13,0">

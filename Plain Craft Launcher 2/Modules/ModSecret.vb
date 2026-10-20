@@ -3,8 +3,8 @@
 Friend Module ModSecret
 
     '标注 PCL 的不同分支，仅用于替换标记
-    Public Const DownloadFixVersion As String = "1.2.1"
-    Public Const VersionBranchMain As String = "LGCMcn DownloadFix v1.2.1"
+    Public Const DownloadFixVersion As String = "1.2.2"
+    Public Const VersionBranchMain As String = "LGCMcn DownloadFix v1.2.2"
     '在开源版的注册表与常规版的注册表隔离，以防数据冲突
     Public Const RegFolder As String = "PCLDownloadFix"
     '用于微软登录的 ClientId
