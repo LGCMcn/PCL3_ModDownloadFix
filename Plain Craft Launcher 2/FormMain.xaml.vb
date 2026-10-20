@@ -408,6 +408,7 @@ Public Class FormMain
                 AaCode(Sub()
                            PanBack.RenderTransform = Nothing
                            IsWindowLoadFinished = True
+                           PrepareNavigationPages()
                        End Sub, , True)
             }, "Form Show")
         Else
@@ -415,6 +416,7 @@ Public Class FormMain
             Opacity = Settings.Get(Of Integer)("UiLauncherTransparent") / 1000 + 0.4
             AniControlEnabled -= 1
             IsWindowLoadFinished = True
+                           PrepareNavigationPages()
         End If
         Logger.Info($"DPI：{DPI}，系统版本：{Environment.OSVersion.VersionString}，PCL 位置：{PathExe}")
         'Timer 启动
@@ -1396,10 +1398,17 @@ Public Class FormMain
     ''' <summary>
     ''' 通过点击导航栏改变页面。
     ''' </summary>
+    Private PendingTitleNavigation As Threading.DispatcherOperation
     Private Sub BtnTitleSelect_Click(sender As MyRadioButton, raiseByMouse As Boolean) Handles BtnTitleSelect0.Check, BtnTitleSelect1.Check, BtnTitleSelect2.Check, BtnTitleSelect3.Check, BtnTitleSelect4.Check
         UpdateTitleSelection()
         If IsChangingPage Then Return
-        PageChangeActual(Val(sender.Tag))
+        If PendingTitleNavigation?.Status = Threading.DispatcherOperationStatus.Pending Then PendingTitleNavigation.Abort()
+        Dim Target As PageStackData = Val(sender.Tag)
+        PendingTitleNavigation = Dispatcher.BeginInvoke(Threading.DispatcherPriority.Background, New Action(
+            Sub()
+                PendingTitleNavigation = Nothing
+                PageChangeActual(Target)
+            End Sub))
     End Sub
     ''' <summary>
     ''' 通过点击返回按钮或手动触发返回来改变页面。
@@ -1417,6 +1426,8 @@ Public Class FormMain
     ''' 切换现有页面的实际方法。
     ''' </summary>
     Private Sub PageChangeActual(Stack As PageStackData, Optional SubType As PageSubType = -1)
+        If PendingTitleNavigation?.Status = Threading.DispatcherOperationStatus.Pending Then PendingTitleNavigation.Abort()
+        PendingTitleNavigation = Nothing
         If PageCurrent = Stack AndAlso (PageCurrentSub = SubType OrElse SubType = -1) Then Return
         If Stack.Page = PageType.InstanceSetup AndAlso PageInstanceLeft.Instance IsNot Nothing AndAlso McInstanceLock.IsLocked(PageInstanceLeft.Instance) Then
             Hint("该版本正在被修改，暂时无法进入版本设置！", HintType.Red)

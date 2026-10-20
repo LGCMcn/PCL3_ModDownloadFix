@@ -160,6 +160,8 @@
       <HintPath>Resources\Ookii.Dialogs.Wpf.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Security" />
@@ -268,6 +270,7 @@
     <Compile Include="Modules\ModVisualExperience.vb" />
     <Compile Include="Modules\ModNavigation.vb" />
     <Compile Include="Modules\ModWindowMotion.vb" />
+    <Compile Include="Modules\ModTaskbarTarget.vb" />
     <Compile Include="Modules\ModDeviceInfo.vb" />
     <Compile Include="Controls\MyOfflineMorphIcon.vb" />
     <Compile Include="Pages\PageDownload\Resource\PageResource.xaml.vb">

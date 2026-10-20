@@ -1,4 +1,4 @@
-Imports System.Windows.Markup
+﻿Imports System.Windows.Markup
 
 <ContentProperty("Inlines")>
 Public Class MyRadioButton
@@ -169,6 +169,17 @@ Public Class MyRadioButton
     Private Const AnimationTimeOfCheck As Integer = 120 '勾选状态变更动画长度
     Private Sub RefreshColor(Optional obj = Nothing, Optional e = Nothing) Handles Me.MouseEnter, Me.MouseLeave, Me.Loaded
         Try
+            If UseSelectionIndicator AndAlso ColorType = ColorState.White Then
+                AniStop("MyRadioButton Checked " & Uuid) : AniStop("MyRadioButton Color " & Uuid)
+                Background = If(Not Checked AndAlso IsMouseOver, New SolidColorBrush(Color.FromArgb(25, 255, 255, 255)), Brushes.Transparent)
+                If Checked Then
+                    ShapeLogo.SetResourceReference(Shapes.Path.FillProperty, "ColorBrush3")
+                    LabText.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush3")
+                Else
+                    ShapeLogo.Fill = Brushes.White : LabText.Foreground = Brushes.White
+                End If
+                Return
+            End If
             If IsLoaded AndAlso AniControlEnabled = 0 AndAlso Not False.Equals(e) Then '防止默认属性变更触发动画，若强制不执行动画，则 e 为 False
 
                 Select Case ColorType

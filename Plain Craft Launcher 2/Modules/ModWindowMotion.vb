@@ -18,10 +18,12 @@ Friend Class WindowMotion
     Private PreviousOpacity As Double
     Private NativeSource As HwndSource
     Private IsClosing As Boolean
+    Private IsPreparing As Boolean
+    Private PreparationGeneration As Integer
     Private IsDisposed As Boolean
     Public ReadOnly Property IsMinimizing As Boolean
         Get
-            Return Overlay IsNot Nothing
+            Return Overlay IsNot Nothing OrElse IsPreparing
         End Get
     End Property
 
@@ -29,8 +31,16 @@ Friend Class WindowMotion
         Owner = Target
         AddHandler Owner.Closed, AddressOf OnClosed
         AddHandler Owner.StateChanged, AddressOf OnStateChanged
+        AddHandler Owner.Activated, AddressOf WarmTaskbarTarget
         NativeSource = TryCast(PresentationSource.FromVisual(Target), HwndSource)
         NativeSource?.AddHook(AddressOf WindowMessage)
+        WarmTaskbarTarget(Nothing, EventArgs.Empty)
+    End Sub
+
+    Private Async Sub WarmTaskbarTarget(Sender As Object, E As EventArgs)
+        If IsDisposed OrElse Not Owner.ShowInTaskbar Then Return
+        Dim Handle = New WindowInteropHelper(Owner).Handle
+        If Handle <> IntPtr.Zero Then Await LocateTaskbarButton(GetScreenBounds(Handle))
     End Sub
 
     Private Function WindowMessage(Hwnd As IntPtr, Message As Integer, WParam As IntPtr, LParam As IntPtr, ByRef Handled As Boolean) As IntPtr
@@ -40,7 +50,7 @@ Friend Class WindowMotion
         Return IntPtr.Zero
     End Function
 
-    Public Sub Minimize()
+    Public Async Sub Minimize()
         If IsDisposed OrElse IsClosing OrElse IsMinimizing OrElse Owner.WindowState = WindowState.Minimized Then Return
         If Not Settings.Get(Of Boolean)("UiMinimizeAnimation") OrElse Not MotionAvailable() OrElse (RenderCapability.Tier >> 16) < 2 OrElse SystemParameters.IsRemoteSession OrElse AniIsRun("Form Show") Then
             Owner.WindowState = WindowState.Minimized : Return
@@ -53,6 +63,12 @@ Friend Class WindowMotion
             Dim SourceBounds As New Rect(Bounds.Left, Bounds.Top, Bounds.Right - Bounds.Left, Bounds.Bottom - Bounds.Top)
             Dim Edge As Integer
             Dim Destination = FindTaskbarTarget(Handle, SourceBounds, Edge)
+            IsPreparing = True
+            Dim Generation = PreparationGeneration
+            Dim Button = Await LocateTaskbarButton(GetScreenBounds(Handle))
+            If Generation <> PreparationGeneration OrElse IsClosing OrElse IsDisposed OrElse Owner.WindowState = WindowState.Minimized Then Return
+            IsPreparing = False
+            If Button.HasValue Then Destination = TaskbarButtonEndpoint(Button.Value)
             Dim Area = Rect.Union(SourceBounds, Destination) : Area.Inflate(2, 2)
             Dim Quality = Math.Min(1.0, Math.Min(1280 / Owner.ActualWidth, 900 / Owner.ActualHeight))
             Dim Snapshot As New RenderTargetBitmap(Math.Max(1, CInt(Owner.ActualWidth * Quality)), Math.Max(1, CInt(Owner.ActualHeight * Quality)), 96 * Quality, 96 * Quality, PixelFormats.Pbgra32)
@@ -87,6 +103,7 @@ Friend Class WindowMotion
     End Sub
 
     Public Sub CancelMinimize()
+        PreparationGeneration += 1 : IsPreparing = False
         Dim Old = Overlay : Overlay = Nothing
         Surface?.Release() : Surface = Nothing
         If Old Is Nothing Then Return
@@ -135,6 +152,7 @@ Friend Class WindowMotion
         CloseRoot = Nothing : PreviousTransform = Nothing
         RemoveHandler Owner.Closed, AddressOf OnClosed
         RemoveHandler Owner.StateChanged, AddressOf OnStateChanged
+        RemoveHandler Owner.Activated, AddressOf WarmTaskbarTarget
         NativeSource?.RemoveHook(AddressOf WindowMessage) : NativeSource = Nothing
     End Sub
     Private Sub OnClosed(Sender As Object, E As EventArgs)
@@ -157,6 +175,11 @@ Friend Class WindowMotion
             Case 2 : Return New Rect(Screen.Right - Math.Max(6, Insets(2) / 2), Y - 24, 4, 48)
             Case Else : Return New Rect(X - 24, Screen.Bottom - Math.Max(6, Insets(3) / 2), 48, 4)
         End Select
+    End Function
+    Private Shared Function GetScreenBounds(Handle As IntPtr) As Rect
+        Dim Info As New MonitorInfo With {.Size = Marshal.SizeOf(GetType(MonitorInfo))}
+        If Not GetMonitorInfo(MonitorFromWindow(Handle, 2), Info) Then Return Rect.Empty
+        Return New Rect(Info.Monitor.Left, Info.Monitor.Top, Info.Monitor.Right - Info.Monitor.Left, Info.Monitor.Bottom - Info.Monitor.Top)
     End Function
     Private Shared Function FindTaskbarTarget(Handle As IntPtr, Source As Rect, ByRef Edge As Integer) As Rect
         Dim Info As New MonitorInfo With {.Size = Marshal.SizeOf(GetType(MonitorInfo))}

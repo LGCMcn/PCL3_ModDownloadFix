@@ -36,6 +36,7 @@ class SmokeTests {
             // Detach the production startup before any test initializes WPF or pumps messages.
             var startup=app.GetType("PCL.Application").GetMethod("Application_Startup",BindingFlags.Instance|BindingFlags.NonPublic);
             application.ShutdownMode=System.Windows.ShutdownMode.OnExplicitShutdown;
+            System.Threading.SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Threading.Dispatcher.CurrentDispatcher));
             application.Startup-=(System.Windows.StartupEventHandler)Delegate.CreateDelegate(typeof(System.Windows.StartupEventHandler),application,startup);
 
             var resource=app.GetManifestResourceNames().Single(n=>n.EndsWith("Resources.resources"));
@@ -191,7 +192,7 @@ class SmokeTests {
         foreach(var element in source.DescendantsAndSelf().Where(e=>e.Name.NamespaceName=="clr-namespace:PCL").ToList())element.Name=System.Xml.Linq.XName.Get(element.Name.LocalName,native);
         source.SetAttributeValue(System.Xml.Linq.XNamespace.Xmlns+"local",native);
         var header=(System.Windows.Controls.Grid)System.Windows.Markup.XamlReader.Parse(source.ToString());
-        var preview=new System.Windows.Window{Content=header,Width=1280,Height=48,WindowStyle=System.Windows.WindowStyle.None,ShowInTaskbar=false,ShowActivated=false,Left=40,Top=40};preview.Show();Pump(80);
+        var preview=new System.Windows.Window{Content=new MeasureProbe{Child=header},Width=1280,Height=48,WindowStyle=System.Windows.WindowStyle.None,ShowInTaskbar=false,ShowActivated=false,Left=40,Top=40};preview.Show();Pump(80);
         var tabs=(System.Windows.FrameworkElement)header.FindName("PanTitleTabs");var selector=(System.Windows.Controls.StackPanel)header.FindName("PanTitleSelect");
         var indicator=(System.Windows.Controls.Border)header.FindName("TitleSelection");var badge=(System.Windows.FrameworkElement)header.FindName("ThirdPartyVersionBadge");
         var mark=(System.Windows.FrameworkElement)header.FindName("ThirdPartyRomanMark");
@@ -204,9 +205,10 @@ class SmokeTests {
             CapturePage(header,width,48,"titlebar-"+width+".png");
         }
 
+        var layoutProbe=(MeasureProbe)preview.Content;int measuresBefore=layoutProbe.Measures;
         var chosen=selector.Children[4];chosen.GetType().GetMethod("SetChecked").Invoke(chosen,new object[]{true,false,false});
         Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);Pump(40);
-        var transform=(System.Windows.Media.TranslateTransform)indicator.RenderTransform;
+        var transform=(System.Windows.Media.TranslateTransform)((System.Windows.Media.TransformGroup)indicator.RenderTransform).Children[1];
         double intermediate=transform.X,finish=((System.Windows.FrameworkElement)chosen).TranslatePoint(new System.Windows.Point(0,0),tabs).X;
 
         Check(!(bool)Call("ModVisualExperience","NavigationMotionEnabled")||intermediate>0&&intermediate<finish,"top selection capsule moves through intermediate positions");
@@ -215,7 +217,8 @@ class SmokeTests {
             Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);
         }
         Pump(300);
-        Check(Math.Abs(transform.X-finish)<1&&!transform.HasAnimatedProperties,"rapid tab selection finishes on the latest tab and releases its clock");
+        Check(layoutProbe.Measures-measuresBefore<=2&&!indicator.HasAnimatedProperties,"tab glide avoids per-frame width/layout animation");
+        Check(Math.Abs(transform.X-finish)<1&&!transform.HasAnimatedProperties&&!indicator.HasAnimatedProperties,"rapid tab selection finishes on the latest tab and releases its clock");
         preview.Close();
         foreach(var pageType in new[]{"PageSetupUI","PageOtherTest"}) {
             var page=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL."+pageType));
@@ -235,6 +238,9 @@ class SmokeTests {
         }
     }
     static void WindowChecks() {
+        var buttonBounds=new System.Windows.Rect(-1200,1040,66,40);
+        var endpoint=(System.Windows.Rect)Call("ModTaskbarTarget","TaskbarButtonEndpoint",buttonBounds);
+        Check(Math.Abs(endpoint.X+endpoint.Width/2-buttonBounds.X-buttonBounds.Width/2)<.001&&Math.Abs(endpoint.Y+endpoint.Height/2-buttonBounds.Y-buttonBounds.Height/2)<.001,"minimize endpoint is exactly the taskbar button center");
         var type=app.GetType("PCL.WindowMotion");
         var targetMethod=type.GetMethod("ChooseTaskbarTarget",BindingFlags.Static|BindingFlags.NonPublic);
         var screen=new System.Windows.Rect(-1920,0,1920,1080);var source=new System.Windows.Rect(-1400,180,600,400);
@@ -272,7 +278,7 @@ class SmokeTests {
         minimize();bool animated=active();int count=System.Windows.Application.Current.Windows.Count;
         minimize();Check(System.Windows.Application.Current.Windows.Count==count,"repeated minimize does not create another overlay");
         if(animated) {
-            Pump(80);Check(window.Opacity==0&&active(),"snapshot deforms while the real window is hidden");
+            Pump(150);Check(window.Opacity==0&&active(),"snapshot deforms while the real window is hidden");
             Pump(500);
         }
         Check(window.WindowState==System.Windows.WindowState.Minimized&&!active()&&Math.Abs(window.Opacity-.9)<.01,"minimize finishes with real state and releases overlay/opacity");
@@ -305,6 +311,10 @@ class SmokeTests {
     static WeakReference MakeWindowMotionProbe(System.Windows.Window window) {
         var motion=(IDisposable)Activator.CreateInstance(app.GetType("PCL.WindowMotion"),new object[]{window});
         motion.Dispose();return new WeakReference(motion);
+    }
+    public sealed class MeasureProbe : System.Windows.Controls.Decorator {
+        public int Measures;
+        protected override System.Windows.Size MeasureOverride(System.Windows.Size available) {Measures++;return base.MeasureOverride(available);}
     }
     public sealed class Counter {readonly Action action;public Counter(Action a){action=a;} public void Invoke(){action();}}
     static void Pump(int milliseconds) {

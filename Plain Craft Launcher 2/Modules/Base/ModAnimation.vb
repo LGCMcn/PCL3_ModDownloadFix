@@ -1,4 +1,4 @@
-'动画引擎模块
+﻿'动画引擎模块
 '使用 Ani 作为方法或属性的开头，使用 Aa 作为单个动画对象的开头（便于自动补全）
 
 Imports System.Windows.Media.Effects
@@ -815,7 +815,7 @@ Public Module ModAnimation
                 Do While True
                     '两帧之间的间隔时间
                     Dim DeltaTime As Long = (GetTimeMs() - AniLastTick).Clamp(0, 100000)
-                    If DeltaTime < 3 Then GoTo Sleeper
+                    If DeltaTime < 15 Then GoTo Sleeper
                     AniLastTick = GetTimeMs()
                     '记录 FPS
                     If ModeDebug Then
@@ -827,7 +827,7 @@ Public Module ModAnimation
                         AniFPSCounter += 2
                     End If
                     '执行动画
-                    RunInUiWait(
+                    Application.Current.Dispatcher.Invoke(
                     Sub()
                         AniCount = 0
                         AniTimer(DeltaTime * AniSpeed)
@@ -839,7 +839,7 @@ Public Module ModAnimation
                                 Next
                             End If
                         End If
-                    End Sub)
+                    End Sub, Threading.DispatcherPriority.Background)
 Sleeper:
                     '控制 FPS
                     Thread.Sleep(1)
