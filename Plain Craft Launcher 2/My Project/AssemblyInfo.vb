@@ -8,7 +8,7 @@ Imports System.Runtime.InteropServices
 
 '查看程序集特性的值
 
-<Assembly: AssemblyTitle("Plain Craft Launcher 启动器")>
+<Assembly: AssemblyTitle("Plain Craft Launcher (PCL) LGCMcn 下载修复版")>
 <Assembly: AssemblyDescription("Minecraft 启动器")>
 <Assembly: AssemblyCompany("")>
 <Assembly: AssemblyProduct("Plain Craft Launcher")>

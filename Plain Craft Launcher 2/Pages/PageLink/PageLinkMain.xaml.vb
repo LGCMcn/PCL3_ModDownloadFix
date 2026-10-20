@@ -382,7 +382,7 @@ Public Class PageLinkMain
     ''' <summary>
     ''' EasyTier 所在的文件夹路径，以 \ 结尾。
     ''' </summary>
-    Private PathEasyTier As String = Paths.AppDataThenName & "EasyTier\"
+    Private PathEasyTier As String = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PCL", "EasyTier") & "\"
     ''' <summary>
     ''' 当前是服务端还是客户端。
     ''' </summary>
@@ -426,9 +426,7 @@ Public Class PageLinkMain
     '1. 获取服务器配置
     Private Sub InitConfig(Task As LoaderTask(Of Integer, Integer))
         UpdateLoadingPage("正在联网获取配置……", "联网获取配置")
-        If VersionBranchMain <> "Official" Then
-            Throw New Exception($"$开源版无法联网获取配置。{vbCrLf}你可以在 PCL 官方版的缓存文件夹下查看 ServerConfig 的当前内容， 并在代码中进行相应修改。")
-        End If
+        '从本地配置或内置开源组件配置加载，不再检查官方分支。
         ServerLoader.WaitForExit(LoaderToSyncProgress:=Task)
         If ServerConfig Is Nothing Then Throw New Exception("无法从服务器获取配置")
         '检查是否已禁用联机功能
@@ -470,10 +468,16 @@ Public Class PageLinkMain
         Dim RequiredFiles As New List(Of NetFile)
         Logger.Info($"EasyTier 本地版本：{LocalVersion}，需求版本：{ServerVersion}")
         If LocalVersion < ServerVersion Then
-            RequiredFiles.Add(New NetFile(
+            Dim Check As New FileChecker With {.MinSize = 1024 * 1024 * 2, .Hash = ServerConfig("Link")("Hashes")?(Architecture)?.ToString()}
+            Dim Bundled = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "组件", $"easytier-windows-{Architecture}-v2.6.4.zip")
+            If ServerVersion = 20604 AndAlso Check.Hash IsNot Nothing AndAlso Check.Check(Bundled) Is Nothing Then
+                FileUtils.Copy(Bundled, PathEasyTier & "EasyTier.zip")
+            Else
+                RequiredFiles.Add(New NetFile(
                 ServerConfig("Link")("Downloads").Select(Function(UrlEntry) UrlEntry.ToString.Replace("{arch}", Architecture)),
                 PathEasyTier & "EasyTier.zip",
-                New FileChecker With {.MinSize = 1024 * 1024 * 2}))
+                Check))
+            End If
         End If
         '开始下载
         UpdateLoadingPage("正在下载联机模块……", "下载联机模块")
@@ -487,9 +491,10 @@ Public Class PageLinkMain
         If FileUtils.Exists(PathEasyTier & "EasyTier.zip") Then
             '解压
             Dim ExtractPath As String = RequestTaskTempFolder()
-            'FileUtils.ExtractToDirectory(PathEasyTier & "EasyTier.zip", ExtractPath,
-            '    progressHandler:=Sub(Percentage) Task.Progress = Percentage * 0.05)
-            DirectoryUtils.Copy(DirectoryUtils.EnumerateDirectories(ExtractPath, True).First, PathEasyTier)
+            FileUtils.ExtractToDirectory(PathEasyTier & "EasyTier.zip", ExtractPath, Task.CreateCancellationToken())
+            Dim ModuleFile = Directory.GetFiles(ExtractPath, "easytier-core.exe", SearchOption.AllDirectories).FirstOrDefault()
+            If ModuleFile Is Nothing Then Throw New Exception("联机模块压缩包中没有 easytier-core.exe。")
+            DirectoryUtils.Copy(Path.GetDirectoryName(ModuleFile), PathEasyTier)
             '重命名
             FileUtils.Move(PathEasyTier & "easytier-core.exe", PathEasyTier & "联机模块.exe")
             FileUtils.Move(PathEasyTier & "easytier-cli.exe", PathEasyTier & "联机模块 CLI.exe")
@@ -613,11 +618,11 @@ Public Class PageLinkMain
             Dim RawNodes As JObject
             Dim IsFallbackRawList As Boolean = False
             Try
-                RawNodes = NetRequestByClient("https://uptime.easytier.cn/api/nodes?page=1&per_page=1000", RequireJson:=True).DeserializeJson()
+                Dim NodesApi = If(ServerConfig("Link")("NodesApi")?.ToString(), "https://uptime.easytier.cn/api/nodes?page=1&per_page=1000")
+                RawNodes = NetRequestByClient(NodesApi, Timeout:=10000, RequireJson:=True).DeserializeJson()
             Catch exx As Exception
-                Logger.Warn(exx, "从源站获取节点列表失败，将使用 CDN 缓存")
-                RawNodes = NetRequestByClientRetry("https://easytier.meloong.com/?page=1&per_page=1000", RequireJson:=True).DeserializeJson()
-                IsFallbackRawList = True
+                Logger.Warn(exx, "公共节点列表不可用，将使用本地节点配置；也可在联机设置中填写自定义节点。")
+                Throw
             End Try
             '分析节点列表
             Dim Nodes As New List(Of JObject) '负载会添加在 load 字段上
@@ -913,7 +918,9 @@ ForcedPass:
     Private RefreshPeerLoader As New LoaderTask(Of Integer, List(Of Peer))("EasyTier CLI", AddressOf RefreshPeer)
     Private Sub RefreshPeer()
         Try
-            Dim CliResult = "" 'StartProcessAndGetOutput(PathEasyTier & "联机模块 CLI.exe", $"-o json -p 127.0.0.1:{RPCPort} peer", 2000, Encoding:=Encoding.UTF8, PrintLog:=False)
+            Dim CliCall = TaskUtils.RunProgramAsync(PathEasyTier & "联机模块 CLI.exe", $"-o json -p 127.0.0.1:{RPCPort} peer", 5000, Encoding.UTF8).GetAwaiter().GetResult()
+            If CliCall.ExitCode <> 0 Then Throw New Exception("EasyTier CLI 调用失败：" & CliCall.Output)
+            Dim CliResult = CliCall.Output
             '解析
             If Not CliResult.Contains("lat_ms") Then Throw New Exception("CLI 调用失败：" & vbCrLf & CliResult)
             If GetUuid() Mod If(ModeDebug, 23, 103) = 0 Then Logger.Info($"CLI 输出抽样：{vbCrLf}{CliResult}")

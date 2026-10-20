@@ -3,22 +3,32 @@
 Friend Module ModSecret
 
     '标注 PCL 的不同分支，仅用于替换标记
-    Public Const VersionBranchMain As String = "OpenSource"
+    Public Const VersionBranchMain As String = "LGCMcn DownloadFix"
     '在开源版的注册表与常规版的注册表隔离，以防数据冲突
-    Public Const RegFolder As String = "PCLDebug"
+    Public Const RegFolder As String = "PCLDownloadFix"
     '用于微软登录的 ClientId
-    Public OAuthClientId As String = If(Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID"), "")
+    Public ReadOnly Property OAuthClientId As String
+        Get
+            Dim Value = ServiceValue("MicrosoftClientId", "", "PCL_MS_CLIENT_ID")
+            If String.IsNullOrWhiteSpace(Value) Then Throw New Exception("$微软登录需要配置你自己的 Microsoft 应用 Client ID。请在 设置 → 其他 → 独立服务配置 中填写，保存后重启。离线账号和游戏下载不需要此配置。")
+            Return Value
+        End Get
+    End Property
     'CurseForge API Key
-    Public CurseForgeAPIKey As String = If(Environment.GetEnvironmentVariable("PCL_CURSEFORGE_API_KEY"), "")
+    Public ReadOnly Property CurseForgeAPIKey As String
+        Get
+            Return ServiceValue("CurseForgeApiKey", "", "PCL_CURSEFORGE_API_KEY")
+        End Get
+    End Property
     '用于匿名数据收集的腾讯云日志服务上报 URL，形如 https://{region}.cls.tencentcs.com/track?topic_id={topic_id}
     Public Const ClsBaseUrl As String = ""
 
 #Region "网络鉴权"
 
-    Public Const RestrictMcDownload As Boolean = True
+    Public Const RestrictMcDownload As Boolean = False
     Friend Function SecretCdnSign(UrlWithMark As String) As String
-        If Not UrlWithMark.EndsWithF("{CDN}") Then Return UrlWithMark
-        Return UrlWithMark.Replace("{CDN}", "").Replace(" ", "%20")
+        If UrlWithMark.EndsWithF("{CDN}") Then UrlWithMark = UrlWithMark.Substring(0, UrlWithMark.Length - 5)
+        Return ResolveServiceUrl(UrlWithMark.Replace(" ", "%20"))
     End Function
     ''' <summary>
     ''' 设置 Headers 的 UA、Referer。
@@ -30,11 +40,12 @@ Friend Module ModSecret
             ElseIf SimulateBrowserHeaders Then
                 Req.Headers.Add("User-Agent", $"PCL2/{VersionBaseName}.{CInt(BuildType)} Mozilla/5.0 AppleWebKit/537.36 Chrome/63.0.3239.132 Safari/537.36")
             Else
-                Req.Headers.Add("User-Agent", $"PCL2/{VersionBaseName}.{CInt(BuildType)}")
+                Req.Headers.Add("User-Agent", $"PCLDownloadFix/{VersionBaseName} (LGCMcn; +https://github.com/LGCMcn/PCL3_ModDownloadFix)")
             End If
         End If
-        If Not SimulateBrowserHeaders Then Req.Headers.Add("Referer", $"http://{VersionCode}.open.pcl2.server/")
-        If Url.Contains("api.curseforge.com") OrElse Url.Contains("forgecdn.net") Then Req.Headers.Add("x-api-key", CurseForgeAPIKey)
+        If (IsCurseForgeApi(Url) OrElse IsCurseForgeDownload(Url)) AndAlso Not String.IsNullOrWhiteSpace(CurseForgeAPIKey) Then
+            Req.Headers.TryAddWithoutValidation("x-api-key", CurseForgeAPIKey)
+        End If
     End Sub
 
 #End Region
@@ -146,7 +157,7 @@ Friend Module ModSecret
 #Region "更新"
 
     Friend Sub UpdateCheckByButton()
-        Hint("该版本中不包含更新功能……")
+        OpenWebsite("https://github.com/LGCMcn/PCL3_ModDownloadFix/releases")
     End Sub
 
     Friend IsUpdateWaitingRestart As Boolean = False
@@ -173,7 +184,7 @@ Friend Module ModSecret
     ''' </summary>
     Public ServerConfig As JObject
 
-    Public ServerLoader As New LoaderTask(Of Integer, Integer)("PCL 配置更新", Sub() Logger.Info("该版本中不包含更新通知功能……"), Priority:=ThreadPriority.BelowNormal) With
+    Public ServerLoader As New LoaderTask(Of Integer, Integer)("PCL 配置更新", AddressOf LoadIndependentLinkConfig, Priority:=ThreadPriority.BelowNormal) With
         {.ReloadTimeout = 1000 * 60 * 60} '超时 1 小时
 
 #End Region
@@ -195,7 +206,17 @@ Friend Module ModSecret
     ''' 获取设备识别码。
     ''' </summary>
     Friend Function GetIdentify() As String
-        Return "0000-0000-0000-0000"
+        Dim Folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PCL")
+        Dim IdPath = Path.Combine(Folder, "DownloadFix.DeviceId")
+        Try
+            If File.Exists(IdPath) Then Return File.ReadAllText(IdPath).Trim()
+            Directory.CreateDirectory(Folder)
+            Dim Id = Guid.NewGuid().ToString("N")
+            File.WriteAllText(IdPath, Id)
+            Return Id
+        Catch
+            Return Environment.MachineName
+        End Try
     End Function
 
 #End Region

@@ -1,69 +1,47 @@
-name: Build
+name: Build DownloadFix
 on:
   push:
     paths:
       - 'Plain Craft Launcher 2/**'
+      - 'PCLCS/**'
+      - 'MeloongCore/**'
+      - 'build.ps1'
       - '.github/workflows/**'
   pull_request:
-    paths:
-      - 'Plain Craft Launcher 2/**'
-      - '.github/workflows/**'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build
     runs-on: windows-latest
-    strategy:  
-       matrix:  
-         configuration: [Debug, Release]
-
     steps:
-
-    - name: Checkout
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 1
-        submodules: true
-
-    - name: Set Describe
-      shell: bash
-      run: |
-          describe=`git describe --tags --always`
-          echo "describe=$describe" >> $GITHUB_ENV
-
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v3
-      with:
-        msbuild-architecture: x64
-    
-    - name: Update Help
-      run:  |
-        Set-Location ..
-        git clone https://github.com/LTCatt/PCL2Help.git -b master --single-branch --depth 1
-        Set-Location PCL2Help
-        Remove-Item -Path *.* -Recurse -Force
-        Compress-Archive -Path .\* -DestinationPath .\Help.zip
-        Copy-Item -Path .\Help.zip -Destination "${{ GITHUB.WORKSPACE }}\Plain Craft Launcher 2\Resources\Help.zip" -Force
-        Set-Location ..
-        Remove-Item PCL2Help -Recurse -Force
-        Set-Location ${{ GITHUB.WORKSPACE }}
-
-
-    - name: Replace
-      run: |
-        (gc "Plain Craft Launcher 2\Modules\ModSecret.vb") -replace 'Public OAuthClientId As String = If(Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID"), "")', 'Public OAuthClientId As String = If(Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID"), "${{ secrets.CLIENT_ID }}")' | Out-File "Plain Craft Launcher 2\Modules\ModSecret.vb"
-        (gc "Plain Craft Launcher 2\Modules\ModSecret.vb") -replace 'Public CurseForgeAPIKey As String = If(Environment.GetEnvironmentVariable("PCL_CURSEFORGE_API_KEY"), "")', 'Public CurseForgeAPIKey As String = If(Environment.GetEnvironmentVariable("PCL_CURSEFORGE_API_KEY"), "${{ secrets.CURSEFORGE_API_KEY }}")' | Out-File "Plain Craft Launcher 2\Modules\ModSecret.vb"
-        (gc "Plain Craft Launcher 2\Modules\Base\ModBase.vb") -replace 'Public Const CommitHash As String = ""', 'Public Const CommitHash As String = "${{ github.sha }}"' | Out-File "Plain Craft Launcher 2\Modules\Base\ModBase.vb"
-        
-    - name: Restore NuGet Packages
-      run: dotnet restore PCLCS\PCLCS.csproj
-
-    - name: Build
-      run: msbuild "Plain Craft Launcher 2\Plain Craft Launcher 2.vbproj" -p:Configuration=${{ matrix.configuration }}
-
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ matrix.configuration }} ${{ env.describe }}
-        path: Plain Craft Launcher 2\obj\${{ matrix.configuration }}\Plain Craft Launcher 2.exe
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: microsoft/setup-msbuild@v3
+        with:
+          msbuild-architecture: x64
+      - name: Build from public source without embedded credentials
+        shell: pwsh
+        run: ./build.ps1 -Configuration Release
+      - name: Verify runtime configuration and request headers
+        shell: pwsh
+        run: ./tests/run-smoke-tests.ps1
+      - name: Prepare portable files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path package | Out-Null
+          Copy-Item 'Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe' package/
+          Copy-Item 'Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe.config' package/
+          Copy-Item PCL.Services.example.json package/PCL.Services.json
+          Copy-Item PCL.Link.example.json package/PCL.Link.json
+          Copy-Item LICENCE package/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PCL-DownloadFix
+          path: package/

@@ -342,3 +342,11 @@ ASALocalRun/
 healthchecksdb
 
 MaskFiles/
+
+# DownloadFix local credentials, runtime state and release output
+PCL.Services.json
+PCL.Link.json
+PCL/
+.minecraft/
+artifacts/
+release-output/

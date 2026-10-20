@@ -257,6 +257,7 @@
     <Compile Include="Modules\ModDevelop.vb" />
     <Compile Include="Modules\Minecraft\ModWatcher.vb" />
     <Compile Include="Modules\ModSecret.vb" />
+    <Compile Include="Modules\ModServices.vb" />
     <Compile Include="Pages\PageDownload\Resource\PageResource.xaml.vb">
       <DependentUpon>PageResource.xaml</DependentUpon>
     </Compile>

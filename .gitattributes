@@ -61,3 +61,4 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+"Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml" -text

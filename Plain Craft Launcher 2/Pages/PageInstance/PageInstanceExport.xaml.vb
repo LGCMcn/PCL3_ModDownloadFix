@@ -475,11 +475,11 @@ Public Class PageInstanceExport
 
 #Region "准备 PCL 文件"
 
-        If BuildType <> BuildTypes.Release AndAlso IncludePCL Then
+        If IncludePCL Then
             Loaders.Add(New LoaderTask(Of Integer, Integer)("下载 PCL 正式版",
             Sub(Loader As LoaderTask(Of Integer, Integer))
-                DownloadLatestPCL(Loader)
-                FileUtils.Copy(PathTemp & "Latest.exe", CacheFolder & "Plain Craft Launcher.exe")
+                FileUtils.Copy(PathExe, CacheFolder & "Plain Craft Launcher.exe")
+                ExportPublicServiceConfig(CacheFolder & "PCL.Services.json")
             End Sub) With {.ProgressWeight = 0.5, .Block = False})
         End If
 
@@ -566,7 +566,7 @@ Public Class PageInstanceExport
             If DirectoryUtils.Exists(TargetInstance.PathVersion & "PCL\") Then DirectoryUtils.Copy(TargetInstance.PathVersion & "PCL\", OverridesFolder & "PCL\")
             WriteIni(OverridesFolder & "PCL\Setup.ini", "IsStar", False)
             '复制 PCL 本体（正式版）
-            If BuildType = BuildTypes.Release AndAlso IncludePCL Then FileUtils.Copy(PathExe, CacheFolder & "Plain Craft Launcher.exe")
+            '当前启动器已在准备阶段复制，无需依赖官方服务器。
             '复制 PCL 个性化内容
             If IncludePCLCustom Then
                 If DirectoryUtils.Exists(Paths.Base & "PCL\Pictures\") Then DirectoryUtils.Copy(Paths.Base & "PCL\Pictures\", CacheFolder & "PCL\Pictures\")

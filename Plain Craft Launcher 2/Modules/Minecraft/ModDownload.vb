@@ -232,7 +232,7 @@ Public Module ModDownload
     Public DlClientListMojangLoader As New LoaderTask(Of String, DlClientListResult)("DlClientList Mojang", AddressOf DlClientListMojangMain)
     Private Sub DlClientListMojangMain(Loader As LoaderTask(Of String, DlClientListResult))
         Dim StartTime As Long = GetTimeMs()
-        Dim Json As JObject = NetRequestByClientRetry("https://launchermeta.mojang.com/mc/game/version_manifest.json", RequireJson:=True).DeserializeJson()
+        Dim Json As JObject = NetRequestByClientRetry("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json", RequireJson:=True).DeserializeJson()
         Try
             Dim Versions As JArray = Json("versions")
             If Versions.Count < 200 Then Throw New Exception("获取到的版本列表长度不足（" & Json.ToString & "）")
@@ -1197,8 +1197,13 @@ Public Module ModDownload
             Urls.Add((Url, If(Url.Contains("modrinth"), 20, 10)))
             Urls.Add((Url, 30))
         End If
+        '没有个人 API Key 时直接使用公开镜像，避免等待必然失败的官方鉴权请求。
+        If IsCurseForgeApi(ResolveServiceUrl(Url)) AndAlso String.IsNullOrWhiteSpace(CurseForgeAPIKey) Then
+            Urls = Urls.Where(Function(s) Not IsCurseForgeApi(ResolveServiceUrl(s.Url))).ToList()
+            If Not Urls.Any Then Throw New Exception("$CurseForge 官方接口需要 API Key。请配置 CurseForgeApiKey 或启用 ModMirrorBase 镜像。Modrinth 不需要此密钥。")
+        End If
         Dim Errors As New List(Of Exception)
-        For Each Source In Urls
+        For Each Source In Urls.Distinct()
             Try
                 Return NetRequestByClient(Source.Url, Method, Content, ContentType, Timeout:=Source.Timeout * 1000, Encoding:=Encoding.UTF8, RequireJson:=True).DeserializeJson()
             Catch ex As Exception
@@ -1303,14 +1308,19 @@ Public Module ModDownload
 
     'Mod 下载源
     Public Function DlSourceModGet(Original As String) As String
-        Return Original.
-            Replace("api.modrinth.com", "mod.mcimirror.top/modrinth").
-            Replace("staging-api.modrinth.com", "mod.mcimirror.top/modrinth").
-            Replace("cdn.modrinth.com", "mod.mcimirror.top").
-            Replace("api.curseforge.com", "mod.mcimirror.top/curseforge").
-            Replace("edge.forgecdn.net", "mod.mcimirror.top").
-            Replace("mediafilez.forgecdn.net", "mod.mcimirror.top").
-            Replace("media.forgecdn.net", "mod.mcimirror.top")
+        Dim Mirror = ServiceBase("ModMirrorBase", "")
+        If Mirror = "" Then Return Original
+        For Each Host In {"https://staging-api.modrinth.com", "https://api.modrinth.com"}
+            Dim Result = ReplaceServiceBase(Original, Host, Mirror & "/modrinth")
+            If Result <> Original Then Return Result
+        Next
+        Dim CurseForge = ReplaceServiceBase(Original, "https://api.curseforge.com", Mirror & "/curseforge")
+        If CurseForge <> Original Then Return CurseForge
+        For Each Host In {"https://cdn.modrinth.com", "https://edge.forgecdn.net", "https://mediafilez.forgecdn.net", "https://media.forgecdn.net"}
+            Dim Result = ReplaceServiceBase(Original, Host, Mirror)
+            If Result <> Original Then Return Result
+        Next
+        Return Original
     End Function
 
     'Loader 自动切换

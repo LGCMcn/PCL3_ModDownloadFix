@@ -1,0 +1,23 @@
+{
+  "Link": {
+    "EasyTierVersion": 20604,
+    "Argument": "",
+    "DiscoverPeerId": 94,
+    "DiscoverPeer": "tcp://mc1.easytier.cn:55558",
+    "Peers": [
+      "tcp://mc1.easytier.cn:55558"
+    ],
+    "PeersBlackList": [],
+    "RandomPeer": 2,
+    "MandatoryPeers": [],
+    "NodesApi": "https://uptime.easytier.cn/api/nodes?page=1&per_page=1000",
+    "Downloads": [
+      "https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-windows-{arch}-v2.6.4.zip"
+    ],
+    "Hashes": {
+      "arm64": "37023f8a3451c9234b17ee2089a03dc344ce90d803b5b359cb6c46682b0549b4",
+      "i686": "bf557daeccc5525d95b8a230c339d75554fb52d82d1e050e9a5202c92c02e09e",
+      "x86_64": "27af91e270e554709b048bd32327fefd2dfce5062ae1e8701af7550c6f525f84"
+    }
+  }
+}

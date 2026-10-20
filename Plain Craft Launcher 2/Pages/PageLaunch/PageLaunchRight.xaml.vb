@@ -62,7 +62,7 @@ Public Class PageLaunchRight
                             </local:MyCard>"
                     Case 2
                         Logger.Info("主页预设：Minecraft 新闻")
-                        Url = "https://mcnews.meloong.com"
+                        Content = IndependentNewsHome()
                     Case 3
                         Logger.Info("主页预设：简单主页")
                         Url = "https://pclhomeplazaoss.lingyunawa.top:26994/d/Homepages/MFn233/Custom.xaml"

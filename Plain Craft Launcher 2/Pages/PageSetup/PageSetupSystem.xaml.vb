@@ -1,4 +1,8 @@
 Public Class PageSetupSystem
+    Private Sub Services_Click() Handles BtnServices.Click
+        OpenServiceConfig()
+    End Sub
+
 
 
     Private Sub PageSetupSystem_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
