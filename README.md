@@ -1,5 +1,7 @@
 # Plain Craft Launcher (PCL) LGCMcn 下载修复版
 
+> **第三方版本声明：** 本项目是 LGCMcn 独立制作的第三方修改版本。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，**本版本不代表 PCL 官方发布，不是官方发行版**。完整声明见 [THIRD_PARTY_NOTICE.md](THIRD_PARTY_NOTICE.md)。
+
 基于 PCL 公开源码独立修改的第三方版本，恢复 Minecraft 下载入口，并将可替代的服务依赖改为本地配置。本版本与 PCL 官方无隶属关系。
 
 原作者：[龙腾猫跃](https://github.com/LTCatt) · [赞助原作者](https://meloong.com/afd/a/LTCat) · [原项目](https://github.com/Meloong-Git/PCL)。保留原许可、署名和正版购买劝导。

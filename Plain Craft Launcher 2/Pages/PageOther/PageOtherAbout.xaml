@@ -43,7 +43,7 @@
                 </Grid>
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="第三方修改说明">
-                <TextBlock Margin="25,37,25,15" Text="本版本由 LGCMcn 基于 PCL 公开源码独立修改，与 PCL 官方无隶属关系。保留原作者署名；源码：https://github.com/LGCMcn/PCL3_ModDownloadFix" TextWrapping="Wrap" />
+                <TextBlock Margin="25,37,25,15" Text="本版本由 LGCMcn 基于 PCL 公开源码独立修改。原项目作者仍为 PCL 官方（龙腾猫跃及原项目贡献者）。第三方修改与 PCL 官方及原作者无关，本版本不代表 PCL 官方发布，不是官方发行版。保留原作者署名；源码：https://github.com/LGCMcn/PCL3_ModDownloadFix" TextWrapping="Wrap" />
             </local:MyCard>
             <local:MyCard Margin="0,0,0,15" Title="特别鸣谢">
                 <Grid Margin="21,40,21,16">
