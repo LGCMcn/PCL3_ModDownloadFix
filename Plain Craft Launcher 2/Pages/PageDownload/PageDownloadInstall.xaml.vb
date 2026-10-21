@@ -22,7 +22,7 @@ Public Class PageDownloadInstall
     End Sub
 
     Private IsLoad As Boolean = False
-    Public Overridable Sub Init() Handles Me.Loaded
+    Public Overridable Sub Init() Handles Me.Loaded, Me.NavigationActivated
         If IsLoad Then
             IsSelectNameEdited = False
             ExitSelectPage()

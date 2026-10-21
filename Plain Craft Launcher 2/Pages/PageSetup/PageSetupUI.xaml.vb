@@ -3,7 +3,7 @@ Public Class PageSetupUI
         OpenAccountManager()
     End Sub
 
-    Private Sub PageSetupUI_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
+    Private Sub PageSetupUI_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded, Me.NavigationActivated
         '重复加载部分
         PanBack.ScrollToHome()
         ApplyPersonalizationControls(Me)
@@ -429,7 +429,7 @@ Refresh:
     ''' <summary>
     ''' 更新功能隐藏带来的显示变化。
     ''' </summary>
-    Public Shared Sub HiddenRefresh() Handles Me.Loaded
+    Public Shared Sub HiddenRefresh() Handles Me.Loaded, Me.NavigationActivated
         If FrmMain.PanTitleSelect Is Nothing OrElse Not FrmMain.PanTitleSelect.IsLoaded Then Return
         Try
             '顶部栏

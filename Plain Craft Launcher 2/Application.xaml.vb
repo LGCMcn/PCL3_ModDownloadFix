@@ -14,8 +14,9 @@ Public Class Application
                 WaitingMutex(e)
                 Logger.Instance = New PclLogger With {.logFolder = Paths.BaseThenName, .MinLevel = If(ModeDebug, LogLevel.Trace, LogLevel.Info)}
             End If
-            '提升主线程优先级
-            Thread.CurrentThread.Priority = ThreadPriority.Highest
+            '让输入、合成与后台任务由系统正常调度，避免主线程挤占其他渲染线程。
+            Thread.CurrentThread.Priority = ThreadPriority.Normal
+            StartUiDiagnostics()
             '执行开发版测试
             If BuildType = BuildTypes.Debug Then
                 Try

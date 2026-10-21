@@ -1,6 +1,8 @@
-Public Class MyPageLeft
+﻿Public Class MyPageLeft
     Inherits Grid
     Private Uuid As Integer = GetUuid()
+    Private EntranceMotion As MyPageMotion
+    Private NeedsControlReset As Boolean
 
     '执行逐个进入动画的控件
     Public Property AnimatedControl As String '需要在 Loaded 之后才能获取到控件，所以不能用 Binding 直接绑定（#6664）
@@ -14,7 +16,10 @@ Public Class MyPageLeft
     Public Shared ReadOnly AnimatedControlProperty As DependencyProperty = DependencyProperty.Register("AnimatedControl", GetType(String), GetType(MyPageLeft), New PropertyMetadata(Nothing))
 
     Public Sub CancelPageAnimation()
+        EntranceMotion?.Dispose() : EntranceMotion = Nothing
         AniStop("PageLeft PageChange " & Uuid)
+        If Not NeedsControlReset Then Return
+        NeedsControlReset = False
         Opacity = 1 : RenderTransform = Nothing
         If AnimatedControl Is Nothing Then Return
         For Each Element In GetAllAnimControls(True)
@@ -24,50 +29,17 @@ Public Class MyPageLeft
     End Sub
     Public Sub TriggerShowAnimation()
         CancelPageAnimation()
-        If Not NavigationMotionEnabled() Then Return
-        If AnimatedControl Is Nothing Then
-            '缩放动画
-            If TypeOf RenderTransform IsNot ScaleTransform Then
-                RenderTransform = New ScaleTransform(0.99, 0.99)
-                RenderTransformOrigin = New Point(0.5, 0.5)
-            End If
-            Opacity = 0.94
-            AniStart({
-                AaScaleTransform(Me, 1 - CType(RenderTransform, ScaleTransform).ScaleX, 170,, New AniEaseOutFluent),
-                AaOpacity(Me, 0.06, 90)
-            }, "PageLeft PageChange " & Uuid)
-        Else
-            '逐个进入动画
-            Dim AniList As New List(Of AniData)
-            Dim Id As Integer = 0, Delay As Integer = 0
-            For Each Element As FrameworkElement In GetAllAnimControls(True)
-                Element = MyVirtualizingElement.TryInit(Element)
-                If Element.Visibility = Visibility.Collapsed Then
-                    '还原之前的隐藏动画可能导致的改变（#2436）
-                    Element.Opacity = 1
-                    Element.RenderTransform = New TranslateTransform(0, 0)
-                    If TypeOf Element Is MyListItem Then CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
-                Else
-                    Element.Opacity = 0.94
-                    Element.RenderTransform = New TranslateTransform(-8, 0)
-                    If TypeOf Element Is MyListItem Then CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
-                    AniList.Add(AaOpacity(Element, If(TypeOf Element Is TextBlock, -0.34, 0.06), 90, Delay, New AniEaseOutFluent(AniEasePower.Weak)))
-                    AniList.Add(AaTranslateX(Element, 8, 160, Delay, New AniEaseOutFluent))
-                    If TypeOf Element Is MyListItem Then
-                        AniList.Add(AaCode(
-                        Sub()
-                            CType(Element, MyListItem).IsMouseOverAnimationEnabled = True
-                            CType(Element, MyListItem).RefreshColor(Me, New EventArgs)
-                        End Sub, Delay + 160))
-                    End If
-                    Delay = Math.Min(18, Delay + 6)
-                    Id += 1
-                End If
+        If AnimatedControl IsNot Nothing Then
+            For Each Element In GetAllAnimControls(True)
+                If TypeOf Element Is TextBlock Then Element.Opacity = 0.6
             Next
-            AniStart(AniList, "PageLeft PageChange " & Uuid)
         End If
+        If Not NavigationMotionEnabled() OrElse Not IsLoaded Then Return
+        EntranceMotion = New MyPageMotion({CType(Me, FrameworkElement)}, Sub() EntranceMotion = Nothing, True)
     End Sub
     Public Sub TriggerHideAnimation()
+        EntranceMotion?.Dispose() : EntranceMotion = Nothing
+        NeedsControlReset = True
         If AnimatedControl Is Nothing Then
             '缩放动画
             If TypeOf RenderTransform IsNot ScaleTransform Then

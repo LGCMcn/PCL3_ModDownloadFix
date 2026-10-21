@@ -19,6 +19,7 @@ Friend Module ModTaskbarTarget
     Public Async Function LocateTaskbarButton(Screen As Rect) As Task(Of Rect?)
         Dim Query As Task(Of Rect?)
         SyncLock QueryLock
+            If CachedButton.HasValue AndAlso Screen.IntersectsWith(CachedButton.Value) AndAlso DateTime.UtcNow - CachedAt < TimeSpan.FromSeconds(10) Then Return CachedButton
             If RunningQuery Is Nothing OrElse RunningQuery.IsCompleted Then
                 RunningQuery = Task.Run(Function() QueryTaskbar(Screen))
             End If
@@ -60,7 +61,16 @@ Friend Module ModTaskbarTarget
                             If Element.Cached.IsOffscreen OrElse Bounds.IsEmpty OrElse Bounds.Width <= 0 OrElse Bounds.Height <= 0 Then Continue For
                             '多屏分别显示按钮时，优先选择窗口所在的屏幕。
                             Dim Score = If(Screen.IntersectsWith(Bounds), 0.0, 1000000.0) + Math.Abs(Bounds.X + Bounds.Width / 2 - Screen.X - Screen.Width / 2)
-                            If Score < Distance Then Distance = Score : Result = Bounds
+                            If Score < Distance Then
+                                Distance = Score
+                                Dim Icon As Rect? = Nothing
+                                For Each Image As AutomationElement In Element.FindAll(TreeScope.Descendants, New PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Image))
+                                    Dim ImageBounds = Image.Cached.BoundingRectangle
+                                    If Not Image.Cached.IsOffscreen AndAlso Bounds.Contains(ImageBounds) AndAlso ImageBounds.Width >= 8 AndAlso ImageBounds.Height >= 8 AndAlso
+                                        (Not Icon.HasValue OrElse ImageBounds.Width * ImageBounds.Height > Icon.Value.Width * Icon.Value.Height) Then Icon = ImageBounds
+                                Next
+                                Result = ResolveTaskbarIconBounds(Bounds, Icon, WindowDpiScale(Handle))
+                            End If
                         Next
                     End Using
             Next
@@ -71,7 +81,22 @@ Friend Module ModTaskbarTarget
     End Function
 
     Public Function TaskbarButtonEndpoint(Button As Rect) As Rect
-        Return New Rect(Button.X + Button.Width / 2 - 2, Button.Y + Button.Height / 2 - 2, 4, 4)
+        Return Button
+    End Function
+    Public Function ResolveTaskbarIconBounds(Button As Rect, Icon As Rect?, DpiScale As Double) As Rect
+        If Icon.HasValue AndAlso Not Icon.Value.IsEmpty AndAlso Icon.Value.Width >= 8 AndAlso Icon.Value.Height >= 8 AndAlso Button.Contains(Icon.Value) Then Return Icon.Value
+        Dim Size = Math.Min(Math.Min(Button.Width, Button.Height), 24 * Math.Max(0.5, Math.Min(4, DpiScale)))
+        Return New Rect(Button.X + (Button.Width - Size) / 2, Button.Y + (Button.Height - Size) / 2, Size, Size)
+    End Function
+    Public Function WindowDpiScale(Handle As IntPtr) As Double
+        Try
+            Dim Dpi = GetDpiForWindow(Handle)
+            If Dpi > 0 Then Return Dpi / 96.0
+        Catch
+        End Try
+        Return 1
+    End Function
+    <DllImport("user32.dll")> Private Function GetDpiForWindow(Handle As IntPtr) As UInteger
     End Function
     <DllImport("shell32.dll", CharSet:=CharSet.Unicode)> Private Function SetCurrentProcessExplicitAppUserModelID(Value As String) As Integer
     End Function

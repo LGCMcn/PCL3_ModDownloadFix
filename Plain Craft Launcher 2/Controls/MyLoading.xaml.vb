@@ -121,7 +121,8 @@ Public Class MyLoading
             If AutoRun Then _State.LoadingState = MyLoadingState.Run
         End If
     End Sub
-    Private Sub RefreshState() Handles _State.LoadingStateChanged, Me.Loaded, Me.Unloaded
+    Private Sub RefreshState() Handles _State.LoadingStateChanged, Me.Loaded, Me.Unloaded, Me.IsVisibleChanged
+        If _State Is Nothing Then Return
         If _State.LoadingState = MyLoadingState.Run AndAlso Not IsLoaded Then InnerState = MyLoadingState.Stop
         InnerState = _State.LoadingState
         OuterState = _State.LoadingState
@@ -174,10 +175,17 @@ Public Class MyLoading
     ''' 主动画循环是否正在运行中。
     ''' </summary>
     Private IsLooping As Boolean = False
+    Private LoopGroup As String
     Private Sub AniLoop()
         '这坨循环代码也是老屎坑了，救救.jpg
-        If Not HasAnimation OrElse IsLooping OrElse Not InnerState = MyLoadingState.Run OrElse AniSpeed > 10 OrElse Not IsLoaded Then Return
+        If Not IsLoaded OrElse Not IsVisible OrElse Not HasAnimation OrElse InnerState <> MyLoadingState.Run Then
+            If LoopGroup IsNot Nothing Then AniStop(LoopGroup) : LoopGroup = Nothing
+            IsLooping = False
+            Return
+        End If
+        If IsLooping OrElse AniSpeed > 10 Then Return
         IsLooping = True
+        LoopGroup = "MyLoader Loop " & Uuid & "/" & GetUuid()
         ErrorAnimationWaiting = True
         AniStart({
             AaRotateTransform(PathPickaxe, -20 - CType(PathPickaxe.RenderTransform, RotateTransform).Angle, 350, 250, New AniEaseInBack(AniEasePower.Weak)),
@@ -200,9 +208,10 @@ Public Class MyLoading
             AaCode(
             Sub()
                 IsLooping = False
+                LoopGroup = Nothing
                 AniLoop()
             End Sub,, True)
-        }, "MyLoader Loop " & Uuid & "/" & GetUuid())
+        }, LoopGroup)
     End Sub
 
     ''' <summary>

@@ -1,6 +1,13 @@
 ﻿Public Class MyPageRight
     Inherits AdornerDecorator
     Public PageUuid As Integer = GetUuid()
+    Private EntranceMotion As MyPageMotion
+    Private NeedsControlReset As Boolean
+    Public Property RetainNavigationLayout As Boolean
+    Public Event NavigationActivated(sender As Object, e As RoutedEventArgs)
+    Friend Sub NotifyNavigationActivated()
+        RaiseEvent NavigationActivated(Me, New RoutedEventArgs())
+    End Sub
 
     '“返回顶部” 按钮检测的滚动区域
     Public Property PanScroll As String '需要在 Loaded 之后才能获取到控件，所以不能用 Binding 直接绑定（#6664）
@@ -48,6 +55,13 @@
     Private PanContent As FrameworkElement
     Private PanAlways As FrameworkElement
     Private PageLoaderAutoRun As Boolean
+
+    Friend Sub PrepareNavigationLayout()
+        If PageState <> PageStates.Empty OrElse PageLoader Is Nothing OrElse PageLoader.State <> LoadState.Finished Then Return
+        PanContent.Visibility = Visibility.Visible
+        PanLoader.Visibility = Visibility.Collapsed
+        If PanAlways IsNot Nothing Then PanAlways.Visibility = Visibility.Visible
+    End Sub
 
     '初始化
     ''' <summary>
@@ -180,6 +194,8 @@
                     PageState = PageStates.ContentEnter
                     TriggerEnterAnimation(PanAlways, If(PanContent, Child))
                 ElseIf PageLoader.State = LoadState.Loading Then
+                    PanContent.Visibility = Visibility.Collapsed
+                    PanLoader.Visibility = Visibility.Collapsed
                     PageState = PageStates.LoaderWait
                     AniStart(AaCode(AddressOf PageOnLoaderWaitFinished, 120), "PageRight PageChange " & PageUuid)
                 Else 'PageLoader.State = LoadState.Failed
@@ -229,11 +245,19 @@
         End Select
     End Sub
     Public Event PageExit()
+    '直接导航仅结束生命周期，不先构造并取消逐项退出动画，也不折叠即将移除的页面。
+    Friend Sub PageOnNavigationExit()
+        EntranceMotion?.Dispose() : EntranceMotion = Nothing
+        RaiseEvent PageExit()
+        AniStop("PageRight PageChange " & PageUuid)
+        PageState = PageStates.Empty
+    End Sub
     ''' <summary>
     ''' 即将切换到其他页面，需要强制完成页面状态清理。
     ''' 需要立即切换至 Empty。
     ''' </summary>
     Public Sub PageOnForceExit()
+        EntranceMotion?.Dispose() : EntranceMotion = Nothing
         If PageState = PageStates.Empty Then Return
         Logger.Trace("已触发 PageOnForceExit")
         PageState = PageStates.Empty
@@ -382,6 +406,16 @@
                         TriggerExitAnimation(PanLoader)
                 End Select
         End Select
+        If NewState = LoadState.Finished AndAlso PageState = PageStates.Empty AndAlso Not IsVisible Then
+            '下载列表在后台完成后就准备模板，不将整页首次布局留给下一次点击。
+            Using MeasureUiPhase("page.background-layout")
+                Try
+                    WarmPageLayout(Me)
+                Catch Ex As Exception
+                    Logger.Warn(Ex, "后台准备页面布局失败，将在进入时重试")
+                End Try
+            End Using
+        End If
     End Sub
 
 #End Region
@@ -390,52 +424,38 @@
 
     '逐个进入动画
     Public Sub TriggerEnterAnimation(ParamArray Elements As FrameworkElement())
-        Dim RealElements = Elements.Where(Function(e) e IsNot Nothing)
+        EntranceMotion?.Dispose() : EntranceMotion = Nothing
+        AniStop("PageRight PageChange " & PageUuid)
+        Dim RealElements = Elements.Where(Function(Element) Element IsNot Nothing).ToArray()
         For Each Element In RealElements
-            Element.Visibility = Visibility.Visible '页面均处于默认的隐藏状态
+            Element.Visibility = Visibility.Visible
+            If NeedsControlReset Then
+                For Each Control In GetAllAnimControls(Element, True)
+                    Control.IsHitTestVisible = True
+                    Control.Opacity = 1
+                    If TypeOf Control.RenderTransform Is TranslateTransform Then Control.RenderTransform = Nothing
+                    If TypeOf Control Is MyExtraTextButton Then CType(Control, MyExtraTextButton).Show = True
+                Next
+            End If
         Next
-        Dim Animate = NavigationMotionEnabled()
-        Dim AniList As New List(Of AniData)
-        Dim Delay As Integer = 0
-        '基础动画
-        For Each Element In RealElements
-            For Each Control As FrameworkElement In GetAllAnimControls(Element, True)
-                '还原被隐藏的卡片的消失动画
-                Control.IsHitTestVisible = True
-                If Control.RenderTransform IsNot Nothing AndAlso TypeOf Control.RenderTransform Is TranslateTransform Then Control.RenderTransform = Nothing
-            Next
-            For Each Control As FrameworkElement In GetAllAnimControls(Element)
-                If TypeOf Control Is MyExtraTextButton Then
-                    CType(Control, MyExtraTextButton).Show = True
-                Else
-                    Control.Opacity = If(Animate, 0.94, 1)
-                    Control.RenderTransform = New TranslateTransform(0, If(Animate, 6, 0))
-                    If Animate Then
-                        AniList.Add(AaOpacity(Control, 0.06, 90, Delay, New AniEaseOutFluent(AniEasePower.Weak)))
-                        AniList.Add(AaTranslateY(Control, -6, 170, Delay, New AniEaseOutFluent))
-                        Delay = Math.Min(24, Delay + 6)
-                    End If
-                End If
-            Next
-        Next
-        If Not Animate Then
-            AniStop("PageRight PageChange " & PageUuid)
+        '导航离开时保留布局；重新进入只隐藏互斥的加载容器。
+        If PanLoader IsNot Nothing AndAlso Not RealElements.Contains(PanLoader) Then PanLoader.Visibility = Visibility.Collapsed
+        If PanContent IsNot Nothing AndAlso Not RealElements.Contains(PanContent) Then PanContent.Visibility = Visibility.Collapsed
+        NeedsControlReset = False
+        If Not NavigationMotionEnabled() OrElse Not IsLoaded OrElse RealElements.Length = 0 Then
             PageOnEnterAnimationFinished()
             Return
         End If
-        '滚动条动画
-        Dim Scroll As MyScrollBar = GetFirstScrollViewer(RealElements)
-        If Scroll IsNot Nothing Then
-            If TypeOf Scroll.RenderTransform IsNot TranslateTransform Then Scroll.RenderTransform = New TranslateTransform(10, 0)
-            AniList.Add(AaTranslateX(Scroll, -CType(Scroll.RenderTransform, TranslateTransform).X, 150, 0, New AniEaseOutFluent))
-        End If
-        '结束
-        AniList.Add(AaCode(Sub() PageOnEnterAnimationFinished(),, True))
-        AniStart(AniList, "PageRight PageChange " & PageUuid, True)
+        EntranceMotion = New MyPageMotion(RealElements,
+            Sub()
+                EntranceMotion = Nothing
+                PageOnEnterAnimationFinished()
+            End Sub)
     End Sub
 
     '逐个退出动画
     Public Sub TriggerExitAnimation(ParamArray Elements As FrameworkElement())
+        EntranceMotion?.Dispose() : EntranceMotion = Nothing
         Dim RealElements = Elements.Where(Function(e) e IsNot Nothing)
         If Not NavigationMotionEnabled() Then
             AniStop("PageRight PageChange " & PageUuid)
@@ -445,6 +465,7 @@
             PageOnExitAnimationFinished()
             Return
         End If
+        NeedsControlReset = True
         Dim AniList As New List(Of AniData)
         Dim Delay As Integer = 0
         For Each Element In RealElements

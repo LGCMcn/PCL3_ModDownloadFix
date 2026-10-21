@@ -1,4 +1,4 @@
-﻿Imports System.ComponentModel
+Imports System.ComponentModel
 Imports System.Windows.Interop
 
 Public Class FormMain
@@ -338,6 +338,8 @@ Public Class FormMain
         PanMainRight.Child = FrmLaunchRight
         PageRight = FrmLaunchRight
         FrmLaunchRight.PageState = MyPageRight.PageStates.ContentStay
+        PrepareNavigationPages()
+        PrepareNavigationHost(PanMainRight)
         '模式提醒
         If BuildType = BuildTypes.Debug Then Hint("[开发者模式] PCL 正以开发者模式运行，这可能会造成严重的性能下降，请务必立即向开发者反馈此问题！", HintType.Red)
         If ModeDebug Then Hint("[调试模式] PCL 正以调试模式运行，这可能会导致性能下降，若无必要请不要开启！")
@@ -377,6 +379,7 @@ Public Class FormMain
         '加载窗口
         ThemeRefreshMain()
         ApplyVisualExperience()
+        PreloadNavigationHost(PanMainRight)
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, New Action(Sub() UpdateTitleSelection(False)))
         Try
             Height = Settings.Get(Of Integer)("WindowHeight")
@@ -408,7 +411,6 @@ Public Class FormMain
                 AaCode(Sub()
                            PanBack.RenderTransform = Nothing
                            IsWindowLoadFinished = True
-                           PrepareNavigationPages()
                        End Sub, , True)
             }, "Form Show")
         Else
@@ -416,7 +418,6 @@ Public Class FormMain
             Opacity = Settings.Get(Of Integer)("UiLauncherTransparent") / 1000 + 0.4
             AniControlEnabled -= 1
             IsWindowLoadFinished = True
-                           PrepareNavigationPages()
         End If
         Logger.Info($"DPI：{DPI}，系统版本：{Environment.OSVersion.VersionString}，PCL 位置：{PathExe}")
         'Timer 启动
@@ -1404,7 +1405,7 @@ Public Class FormMain
         If IsChangingPage Then Return
         If PendingTitleNavigation?.Status = Threading.DispatcherOperationStatus.Pending Then PendingTitleNavigation.Abort()
         Dim Target As PageStackData = Val(sender.Tag)
-        PendingTitleNavigation = Dispatcher.BeginInvoke(Threading.DispatcherPriority.Background, New Action(
+        PendingTitleNavigation = Dispatcher.BeginInvoke(Threading.DispatcherPriority.Input, New Action(
             Sub()
                 PendingTitleNavigation = Nothing
                 PageChangeActual(Target)
@@ -1580,29 +1581,11 @@ Public Class FormMain
         PanMainLeft_Resize(e.NewSize.Width)
     End Sub
     Private Sub PanMainLeft_Resize(NewWidth As Double)
-        Dim Delta As Double = NewWidth - RectLeftBackground.Width
-        If Math.Abs(Delta) > 0.1 AndAlso AniControlEnabled = 0 Then
-            If PanMain.Opacity < 0.1 Then PanMainLeft.IsHitTestVisible = False '避免左边栏指向背景未能完美覆盖左边栏
-            If NewWidth > 0 Then
-                '宽度足够，显示
-                AniStart({
-                    AaWidth(RectLeftBackground, NewWidth - RectLeftBackground.Width, 180,, New AniEaseOutFluent(AniEasePower.ExtraStrong)),
-                    AaOpacity(RectLeftShadow, 1 - RectLeftShadow.Opacity, 180),
-                    AaCode(Sub() PanMainLeft.IsHitTestVisible = True, 150)
-                }, "FrmMain LeftChange", True)
-            Else
-                '宽度不足，隐藏
-                AniStart({
-                    AaWidth(RectLeftBackground, -RectLeftBackground.Width, 180,, New AniEaseOutFluent),
-                    AaOpacity(RectLeftShadow, -RectLeftShadow.Opacity, 180),
-                    AaCode(Sub() PanMainLeft.IsHitTestVisible = True, 150)
-                }, "FrmMain LeftChange", True)
-            End If
-        Else
-            RectLeftBackground.Width = NewWidth
-            PanMainLeft.IsHitTestVisible = True
-            AniStop("FrmMain LeftChange")
-        End If
+        '侧栏宽度随页面一次就位，避免每个动画帧都重新测量背景网格。
+        AniStop("FrmMain LeftChange")
+        RectLeftBackground.Width = Math.Max(0, NewWidth)
+        RectLeftShadow.Opacity = If(NewWidth > 0, 1, 0)
+        PanMainLeft.IsHitTestVisible = True
     End Sub
 
 #End Region
@@ -1701,8 +1684,8 @@ Public Class FormMain
         Return RealScroll IsNot Nothing AndAlso RealScroll.Visibility = Visibility.Visible AndAlso RealScroll.VerticalOffset > Height + If(BtnExtraBack.Show, 0, 700)
     End Function
     Private Function BtnExtraBack_GetRealChild() As MyScrollViewer
-        If PanMainRight.Child Is Nothing OrElse TypeOf PanMainRight.Child IsNot MyPageRight Then Return Nothing
-        Dim Page As MyPageRight = PanMainRight.Child
+        Dim Page As MyPageRight = GetCurrentRightPage(PanMainRight)
+        If Page Is Nothing Then Return Nothing
         Return Page.FindName(Page.PanScroll)
     End Function
 

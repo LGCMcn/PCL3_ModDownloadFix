@@ -1051,18 +1051,14 @@ NextFile:
             End Try
         End If
     End Sub
+    Private MainUiTimer As DispatcherTimer
     Public Sub TimerMainStart()
-        RunInNewThread(
-        Sub()
-            Try
-                Do While True
-                    RunInUiWait(AddressOf TimerMain)
-                    Thread.Sleep(50 * 0.98)
-                Loop
-            Catch ex As Exception
-                Logger.Error(ex, "程序主时钟出错")
-            End Try
-        End Sub, "Timer Main")
+        If MainUiTimer IsNot Nothing Then Return
+        '提示、拖动检查与任务栏状态无需用 Send 优先级抢占输入和绘制。
+        MainUiTimer = New DispatcherTimer(DispatcherPriority.Background) With {.Interval = TimeSpan.FromMilliseconds(50)}
+        AddHandler MainUiTimer.Tick, AddressOf TimerMainTick
+        AddHandler Application.Current.Exit, AddressOf StopMainUiTimer
+        MainUiTimer.Start()
         If Not IsAprilEnabled Then Return
         RunInNewThread(
         Sub()
@@ -1079,6 +1075,15 @@ NextFile:
                 Logger.Error(ex, "愚人节主时钟出错")
             End Try
         End Sub, "Timer Main Fool")
+    End Sub
+    Private Sub TimerMainTick(Sender As Object, Args As EventArgs)
+        TimerMain()
+    End Sub
+    Private Sub StopMainUiTimer(Sender As Object, Args As ExitEventArgs)
+        MainUiTimer.Stop()
+        RemoveHandler MainUiTimer.Tick, AddressOf TimerMainTick
+        RemoveHandler Application.Current.Exit, AddressOf StopMainUiTimer
+        MainUiTimer = Nothing
     End Sub
 
 End Module

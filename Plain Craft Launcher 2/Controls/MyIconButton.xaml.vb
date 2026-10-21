@@ -67,15 +67,15 @@ Public Class MyIconButton
         IsMouseDown = True
         Focus()
         '指向
-        AniStart(AaScaleTransform(PanBack, 0.8 - CType(PanBack.RenderTransform, ScaleTransform).ScaleX, 400,, New AniEaseOutFluent(AniEasePower.Strong)), "MyIconButton Scale " & Uuid)
+        AniStart(AaScaleTransform(PanBack, 0.8 - CType(PanBack.RenderTransform, ScaleTransform).ScaleX, 80,, New AniEaseOutFluent(AniEasePower.Strong)), "MyIconButton Scale " & Uuid)
     End Sub
     Private Sub Button_MouseUp() Handles Me.MouseLeftButtonUp
         If Not CanClick Then Return
         If IsMouseDown Then
             IsMouseDown = False
             AniStart({
-                     AaScaleTransform(PanBack, 1.05 - CType(PanBack.RenderTransform, ScaleTransform).ScaleX, 250,, New AniEaseOutBack(AniEasePower.Weak)),
-                     AaScaleTransform(PanBack, -0.05, 250,, New AniEaseOutFluent(AniEasePower.Strong))
+                     AaScaleTransform(PanBack, 1.05 - CType(PanBack.RenderTransform, ScaleTransform).ScaleX, 110,, New AniEaseOutBack(AniEasePower.Weak)),
+                     AaScaleTransform(PanBack, -0.05, 110,, New AniEaseOutFluent(AniEasePower.Strong))
                  }, "MyIconButton Scale " & Uuid)
         End If
         RefreshAnim() '直接刷新颜色以判断是否已触发 MouseLeave
@@ -84,7 +84,7 @@ Public Class MyIconButton
         If Not CanClick Then Return
         IsMouseDown = False
         AniStart({
-                     AaScaleTransform(PanBack, 1 - CType(PanBack.RenderTransform, ScaleTransform).ScaleX, 250,, New AniEaseOutFluent)
+                     AaScaleTransform(PanBack, 1 - CType(PanBack.RenderTransform, ScaleTransform).ScaleX, 110,, New AniEaseOutFluent)
                  }, "MyIconButton Scale " & Uuid)
         RefreshAnim() '直接刷新颜色以判断是否已触发 MouseLeave
     End Sub

@@ -65,14 +65,51 @@ Friend Class WindowMotion
             Dim Destination = FindTaskbarTarget(Handle, SourceBounds, Edge)
             IsPreparing = True
             Dim Generation = PreparationGeneration
-            Dim Button = Await LocateTaskbarButton(GetScreenBounds(Handle))
+            Dim Button As Rect?
+            Using MeasureUiPhase("minimize.target")
+                Button = Await LocateTaskbarButton(GetScreenBounds(Handle))
+            End Using
             If Generation <> PreparationGeneration OrElse IsClosing OrElse IsDisposed OrElse Owner.WindowState = WindowState.Minimized Then Return
             IsPreparing = False
             If Button.HasValue Then Destination = TaskbarButtonEndpoint(Button.Value)
             Dim Area = Rect.Union(SourceBounds, Destination) : Area.Inflate(2, 2)
-            Dim Quality = Math.Min(1.0, Math.Min(1280 / Owner.ActualWidth, 900 / Owner.ActualHeight))
-            Dim Snapshot As New RenderTargetBitmap(Math.Max(1, CInt(Owner.ActualWidth * Quality)), Math.Max(1, CInt(Owner.ActualHeight * Quality)), 96 * Quality, 96 * Quality, PixelFormats.Pbgra32)
-            Snapshot.Render(Owner) : Snapshot.Freeze()
+            Dim Quality = Math.Min(Scale.M11, Math.Min(1600 / Owner.ActualWidth, 1000 / Owner.ActualHeight))
+            Dim Snapshot As RenderTargetBitmap = Nothing
+            Using MeasureUiPhase("minimize.snapshot")
+                Dim Main = TryCast(Owner, FormMain)
+                Dim ScreenImage As BitmapSource = Nothing
+                If Main IsNot Nothing Then
+                    Using MeasureUiPhase("minimize.capture")
+                        ScreenImage = CaptureVisibleWindow(Handle, SourceBounds, Scale.M11)
+                    End Using
+                End If
+                If ScreenImage IsNot Nothing Then
+                    Snapshot = New RenderTargetBitmap(Math.Max(1, CInt(Owner.ActualWidth * Quality)), Math.Max(1, CInt(Owner.ActualHeight * Quality)), 96 * Quality, 96 * Quality, PixelFormats.Pbgra32)
+                    Dim Visual As New DrawingVisual()
+                    Dim Origin = Main.BorderForm.TranslatePoint(New Point(), Owner)
+                    Using Context = Visual.RenderOpen()
+                        Context.PushClip(New RectangleGeometry(New Rect(Origin, Main.BorderForm.RenderSize), 6, 6))
+                        Context.DrawImage(ScreenImage, New Rect(0, 0, Owner.ActualWidth, Owner.ActualHeight))
+                        Context.Pop()
+                    End Using
+                    Snapshot.Render(Visual) : Snapshot.Freeze()
+                Else
+                    Snapshot = New RenderTargetBitmap(Math.Max(1, CInt(Owner.ActualWidth * Quality)), Math.Max(1, CInt(Owner.ActualHeight * Quality)), 96 * Quality, 96 * Quality, PixelFormats.Pbgra32)
+                    Snapshot.Render(Owner)
+                    Dim Header = TryCast(Owner, FormMain)?.TitleSelection
+                    Dim Selection = Header?.GetSnapshotDrawing()
+                    If Selection IsNot Nothing Then
+                        Dim Position = Header.TranslatePoint(New Point(), Owner)
+                        Dim Patch As New DrawingVisual()
+                        Using Context = Patch.RenderOpen()
+                            Context.PushTransform(New TranslateTransform(Position.X, Position.Y))
+                            Context.DrawDrawing(Selection) : Context.Pop()
+                        End Using
+                        Snapshot.Render(Patch)
+                    End If
+                    Snapshot.Freeze()
+                End If
+            End Using
             Dim LocalSource As New Rect((SourceBounds.X - Area.X) / Scale.M11, (SourceBounds.Y - Area.Y) / Scale.M22, SourceBounds.Width / Scale.M11, SourceBounds.Height / Scale.M22)
             Dim LocalTarget As New Rect((Destination.X - Area.X) / Scale.M11, (Destination.Y - Area.Y) / Scale.M22, Destination.Width / Scale.M11, Destination.Height / Scale.M22)
             Surface = New TaskbarWarpSurface(Snapshot, LocalSource, LocalTarget, Edge, Area.Width / Scale.M11, Area.Height / Scale.M22)
@@ -85,7 +122,9 @@ Friend Class WindowMotion
                 SetWindowLong(OverlayHandle, -20, Flags Or &H8000000 Or &H20 Or &H80) '不激活、鼠标穿透、工具窗口
             End Sub
             PreviousOpacity = Owner.Opacity
-            Overlay.Show()
+            Using MeasureUiPhase("minimize.overlay-show")
+                Overlay.Show()
+            End Using
             SetWindowPos(New WindowInteropHelper(Overlay).Handle, New IntPtr(-1), CInt(Area.X), CInt(Area.Y), CInt(Area.Width), CInt(Area.Height), &H10)
             Owner.Opacity = 0
             Surface.Play(AddressOf FinishMinimize)
@@ -121,8 +160,8 @@ Friend Class WindowMotion
         If PreviousTransform IsNot Nothing Then Group.Children.Add(PreviousTransform)
         Group.Children.Add(CloseScale) : Root.RenderTransform = Group
         CloseCallback = Finished
-        CloseFade = New DoubleAnimation(PreviousOpacity, 0, TimeSpan.FromMilliseconds(180)) With {.EasingFunction = New CubicEase With {.EasingMode = EasingMode.EaseIn}}
-        Dim Shrink As New DoubleAnimation(1, 0.94, TimeSpan.FromMilliseconds(180)) With {.EasingFunction = New CubicEase With {.EasingMode = EasingMode.EaseIn}}
+        CloseFade = New DoubleAnimation(PreviousOpacity, 0, TimeSpan.FromMilliseconds(150)) With {.EasingFunction = New QuadraticEase With {.EasingMode = EasingMode.EaseOut}}
+        Dim Shrink As New DoubleAnimation(1, 0.94, TimeSpan.FromMilliseconds(150)) With {.EasingFunction = New QuadraticEase With {.EasingMode = EasingMode.EaseOut}}
         AddHandler CloseFade.Completed, AddressOf OnCloseFinished
         CloseScale.BeginAnimation(ScaleTransform.ScaleXProperty, Shrink, HandoffBehavior.SnapshotAndReplace)
         CloseScale.BeginAnimation(ScaleTransform.ScaleYProperty, Shrink, HandoffBehavior.SnapshotAndReplace)
@@ -170,10 +209,10 @@ Friend Class WindowMotion
         Dim X = Math.Max(Screen.Left + 30, Math.Min(Screen.Right - 30, Source.Left + Source.Width / 2))
         Dim Y = Math.Max(Screen.Top + 30, Math.Min(Screen.Bottom - 30, Source.Top + Source.Height / 2))
         Select Case Edge
-            Case 0 : Return New Rect(Screen.Left + Math.Max(2, Insets(0) / 2), Y - 24, 4, 48)
-            Case 1 : Return New Rect(X - 24, Screen.Top + Math.Max(2, Insets(1) / 2), 48, 4)
-            Case 2 : Return New Rect(Screen.Right - Math.Max(6, Insets(2) / 2), Y - 24, 4, 48)
-            Case Else : Return New Rect(X - 24, Screen.Bottom - Math.Max(6, Insets(3) / 2), 48, 4)
+            Case 0 : Return New Rect(Screen.Left + Math.Max(12, Insets(0) / 2) - 12, Y - 12, 24, 24)
+            Case 1 : Return New Rect(X - 12, Screen.Top + Math.Max(12, Insets(1) / 2) - 12, 24, 24)
+            Case 2 : Return New Rect(Screen.Right - Math.Max(12, Insets(2) / 2) - 12, Y - 12, 24, 24)
+            Case Else : Return New Rect(X - 12, Screen.Bottom - Math.Max(12, Insets(3) / 2) - 12, 24, 24)
         End Select
     End Function
     Private Shared Function GetScreenBounds(Handle As IntPtr) As Rect
@@ -184,8 +223,12 @@ Friend Class WindowMotion
     Private Shared Function FindTaskbarTarget(Handle As IntPtr, Source As Rect, ByRef Edge As Integer) As Rect
         Dim Info As New MonitorInfo With {.Size = Marshal.SizeOf(GetType(MonitorInfo))}
         If Not GetMonitorInfo(MonitorFromWindow(Handle, 2), Info) Then Throw New InvalidOperationException("无法读取所在屏幕。")
-        Return ChooseTaskbarTarget(New Rect(Info.Monitor.Left, Info.Monitor.Top, Info.Monitor.Right - Info.Monitor.Left, Info.Monitor.Bottom - Info.Monitor.Top),
+        Dim Target = ChooseTaskbarTarget(New Rect(Info.Monitor.Left, Info.Monitor.Top, Info.Monitor.Right - Info.Monitor.Left, Info.Monitor.Bottom - Info.Monitor.Top),
             New Rect(Info.Work.Left, Info.Work.Top, Info.Work.Right - Info.Work.Left, Info.Work.Bottom - Info.Work.Top), Source, Edge)
+        Dim Side = 24 * WindowDpiScale(Handle)
+        Dim X = Math.Max(Info.Monitor.Left, Math.Min(Info.Monitor.Right - Side, Target.X + Target.Width / 2 - Side / 2))
+        Dim Y = Math.Max(Info.Monitor.Top, Math.Min(Info.Monitor.Bottom - Side, Target.Y + Target.Height / 2 - Side / 2))
+        Return New Rect(X, Y, Side, Side)
     End Function
     <StructLayout(LayoutKind.Sequential)> Private Structure NativeRect
         Public Left, Top, Right, Bottom As Integer
@@ -235,7 +278,8 @@ Friend Class TaskbarWarpSurface
             Next
         Next
         Coordinates.Freeze() : Indices.Freeze() : Mesh.TextureCoordinates = Coordinates : Mesh.TriangleIndices = Indices
-        Dim Material As New EmissiveMaterial(Texture)
+        Dim Material As New DiffuseMaterial(Texture)
+        View.Children.Add(New ModelVisual3D With {.Content = New AmbientLight(Colors.White)})
         View.Camera = New OrthographicCamera(New Point3D(AreaWidth / 2, -AreaHeight / 2, 1000), New Vector3D(0, 0, -1), New Vector3D(0, 1, 0), AreaWidth)
         View.Children.Add(New ModelVisual3D With {.Content = New GeometryModel3D(Mesh, Material) With {.BackMaterial = Material}})
         Children.Add(View) : UpdateMesh(0)
@@ -245,7 +289,7 @@ Friend Class TaskbarWarpSurface
     End Function
     Private Sub UpdateMesh(Progress As Double)
         Dim Points As New Point3DCollection((Rows + 1) * (Columns + 1))
-        Dim Travel = Smooth((Progress - 0.08) / 0.92)
+        Dim Travel = 1 - (1 - Math.Max(0, Math.Min(1, Progress / 0.82))) ^ 2
         For Row = 0 To Rows
             For Column = 0 To Columns
                 Dim U = Column / Columns, V = Row / Rows
@@ -263,7 +307,7 @@ Friend Class TaskbarWarpSurface
     End Sub
     Public Sub Play(Finished As Action)
         Completion = Finished
-        Motion = New DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(380)) With {.FillBehavior = FillBehavior.HoldEnd}
+        Motion = New DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(320)) With {.FillBehavior = FillBehavior.HoldEnd}
         AddHandler Motion.Completed, AddressOf OnFinished
         BeginAnimation(ProgressProperty, Motion, HandoffBehavior.SnapshotAndReplace)
     End Sub

@@ -36,7 +36,7 @@ Friend Module ModProjectUpdate
     Public Function FormatProjectNotes(Body As String) As String
         Dim Lines As New List(Of String)
         For Each Line In If(Body, "").Split({vbCrLf, vbLf}, StringSplitOptions.None)
-            Dim Found = Regex.Match(Line, "^\s*(?:[-*]\s+)?\[\s*([+-])\s*\]\s*(.+)$")
+            Dim Found = Regex.Match(Line, "^\s*(?:[-*]\s+)?\[\s*([+?-])\s*\]\s*(.+)$")
             If Found.Success Then Lines.Add("[ " & Found.Groups(1).Value & " ] " & Found.Groups(2).Value.Trim())
         Next
         Return If(Lines.Count = 0, "该历史发行版尚未提供规范的更新记录，可点击「发行版详情」查看。", String.Join(vbCrLf, Lines))

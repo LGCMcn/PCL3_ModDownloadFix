@@ -184,6 +184,12 @@ Public Class MyRadioButton
     End Sub
     Private Sub Radiobox_MouseDown() Handles Me.MouseLeftButtonDown
         If Checked Then Return
+        If UseSelectionIndicator Then
+            Dim e As New RouteEventArgs(True)
+            RaiseEvent PreviewClick(Me, e)
+            If Not e.Handled Then SetChecked(True, True, True)
+            Return
+        End If
         IsMouseDown = True
         RefreshColor()
     End Sub

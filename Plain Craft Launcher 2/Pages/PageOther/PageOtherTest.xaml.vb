@@ -1,6 +1,6 @@
 Public Class PageOtherTest
     Private ReadingDeviceInfo As Boolean
-    Private Sub DevicePageLoaded() Handles Me.Loaded
+    Private Sub DevicePageLoaded() Handles Me.Loaded, Me.NavigationActivated
         ApplyQuietCards(Me)
         SettingService.RefreshSettings(Me)
         If Not ReadingDeviceInfo Then RefreshDeviceInfo(False)

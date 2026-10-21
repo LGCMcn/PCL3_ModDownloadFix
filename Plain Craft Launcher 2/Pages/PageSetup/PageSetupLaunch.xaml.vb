@@ -1,6 +1,6 @@
 Public Class PageSetupLaunch
 
-    Private Sub PageSetupLaunch_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
+    Private Sub PageSetupLaunch_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded, Me.NavigationActivated
         '重复加载部分
         PanBack.ScrollToHome()
         RefreshRam(False)

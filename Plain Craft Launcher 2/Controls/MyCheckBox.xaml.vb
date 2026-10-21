@@ -1,4 +1,4 @@
-Imports System.Windows.Markup
+﻿Imports System.Windows.Markup
 
 <ContentProperty("Inlines")>
 Public Class MyCheckBox
@@ -64,7 +64,6 @@ Public Class MyCheckBox
     End Sub
     Private Sub SyncUI()
         If AniControlEnabled = 0 AndAlso IsLoaded Then '防止默认属性变更触发动画
-            AllowMouseDown = False
             If Checked Then
                 '由无变有
                 AniStart({
@@ -75,9 +74,6 @@ Public Class MyCheckBox
                 AniStart({
                       AaColor(ShapeBorder, Border.BorderBrushProperty, If(IsEnabled, If(IsMouseOver, "ColorBrush3", "ColorBrush2"), "ColorBrushGray5"), AnimationTimeOfCheck)
                  }, "MyCheckBox BorderColor " & Uuid)
-                AniStart({
-                      AaCode(Sub() AllowMouseDown = True, AnimationTimeOfCheck * 2)
-                 }, "MyCheckBox AllowMouseDown " & Uuid)
             Else
                 '由有变无
                 AniStart({
@@ -88,15 +84,11 @@ Public Class MyCheckBox
                 AniStart({
                       AaColor(ShapeBorder, Border.BorderBrushProperty, If(IsEnabled, If(IsMouseOver, "ColorBrush3", "ColorBrush1"), "ColorBrushGray5"), AnimationTimeOfCheck)
                  }, "MyCheckBox BorderColor " & Uuid)
-                AniStart({
-                      AaCode(Sub() AllowMouseDown = True, AnimationTimeOfCheck * 2)
-                 }, "MyCheckBox AllowMouseDown " & Uuid)
             End If
         Else
             '不使用动画
             AniStop("MyCheckBox Scale " & Uuid)
             AniStop("MyCheckBox BorderColor " & Uuid)
-            AniStop("MyCheckBox AllowMouseDown " & Uuid)
             If Checked Then
                 CType(ShapeCheck.RenderTransform, ScaleTransform).ScaleX = 1
                 CType(ShapeCheck.RenderTransform, ScaleTransform).ScaleY = 1
@@ -130,7 +122,6 @@ Public Class MyCheckBox
     '点击事件
 
     Private MouseDowned As Boolean = False
-    Private AllowMouseDown As Boolean = True
     Private Sub Checkbox_MouseUp() Handles Me.MouseLeftButtonUp
         If Not MouseDowned Then Return
         Logger.Info($"按下复选框（{(Not Checked)}）：{Text}")
@@ -139,7 +130,6 @@ Public Class MyCheckBox
         AniStart(AaColor(ShapeBorder, Border.BackgroundProperty, "ColorBrushHalfWhite", 100), "MyCheckBox Background " & Uuid)
     End Sub
     Private Sub Checkbox_MouseDown() Handles Me.MouseLeftButtonDown
-        If Not AllowMouseDown Then Return
         MouseDowned = True
         Focus()
         AniStart(AaColor(ShapeBorder, Border.BackgroundProperty, "ColorBrushBg1", 100), "MyCheckBox Background " & Uuid)

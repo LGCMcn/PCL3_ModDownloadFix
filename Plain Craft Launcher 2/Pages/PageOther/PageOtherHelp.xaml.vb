@@ -4,7 +4,7 @@ Public Class PageOtherHelp
 #Region "初始化"
 
     '滚动条
-    Private Sub PageOther_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
+    Private Sub PageOther_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded, Me.NavigationActivated
         PanBack.ScrollToHome()
     End Sub
     '初始化加载器信息

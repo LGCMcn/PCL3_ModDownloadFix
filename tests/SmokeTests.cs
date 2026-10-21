@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -139,13 +139,62 @@ class SmokeTests {
         var entry=entries[key];var field=entry.GetType().GetField("Source");field.SetValue(entry,Enum.Parse(field.FieldType,"Normal"));
         Call("Settings","Set",key,value);
     }
+    static void AnimationSchedulerChecks() {
+        Call("ModBase","RunInUi");
+        var engine=app.GetType("PCL.ModAnimation");
+        engine.GetMethod("AniStart",Type.EmptyTypes).Invoke(null,null);
+        Func<bool> attached=()=> (bool)engine.GetProperty("IsAnimationFrameAttached",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);
+        var target=new System.Windows.Controls.Border{Background=System.Windows.Media.Brushes.AliceBlue,Opacity=0};
+        var window=new System.Windows.Window{Content=target,Width=140,Height=80,ShowInTaskbar=false,ShowActivated=false,WindowStyle=System.Windows.WindowStyle.None};
+        window.Show();Pump(80);
+        Check(!attached(),"idle animation scheduler has no rendering subscription");
+        Call("ModAnimation","AniStart",new[]{Call("ModAnimation","AaOpacity",target,1d,180)},"scheduler-test");
+        Check(attached(),"starting an animation enables frame updates on demand");
+        Pump(70);Check(target.Opacity>0&&target.Opacity<1,"control animation produces intermediate visual values");
+        Pump(240);Check(Math.Abs(target.Opacity-1)<.001&&!attached(),"completion reaches its target and detaches the rendering event");
+        var watchdog=(System.Windows.Threading.DispatcherTimer)engine.GetField("AnimationWatchdog",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);
+        Check(!watchdog.IsEnabled,"idle scheduler also stops its hidden-window fallback timer");
+        int replacement=0,stale=0;
+        var replace=Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>Call("ModAnimation","AniStart",new[]{Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>replacement++),20)},"scheduler-replace")));
+        var obsolete=Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>stale++),0,true);
+        Call("ModAnimation","AniStart",new[]{replace,obsolete},"scheduler-replace");Pump(180);
+        Check(replacement==1&&stale==0&&!attached(),"callback replacement survives old-group cleanup and cancels obsolete callbacks");
+        int cancelled=0;
+        Call("ModAnimation","AniStart",new[]{Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>cancelled++),80)},"scheduler-cancel");
+        Call("ModAnimation","AniStop","scheduler-cancel");Pump(160);
+        Check(cancelled==0&&!attached(),"cancelled delayed callbacks do not run or retain a frame subscription");
+        var order=new System.Collections.Generic.List<int>();
+        Call("ModAnimation","AniStart",new[]{Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>order.Add(1)),30),Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>order.Add(2)),0,true)},"scheduler-order");Pump(150);
+        Check(order.SequenceEqual(new[]{1,2}),"sequential callback ordering is preserved");
+        Pump(180);target.Opacity=0;
+        Call("ModAnimation","AniStart",new[]{Call("ModAnimation","AaOpacity",target,1d,220)},"scheduler-fresh");Pump(50);
+        Check(target.Opacity>0&&target.Opacity<.9,"a new animation does not inherit idle time from the previous group");
+        System.Threading.Thread.Sleep(90);Pump(25);
+        Check(target.Opacity>.45,"animation timing catches up after a blocked UI thread instead of adding a stale queue delay");
+        Pump(180);window.Hide();Pump(150);int hidden=0;
+        Call("ModAnimation","AniStart",new[]{Call("ModAnimation","AaCode",new System.Threading.ThreadStart(()=>hidden++),30)},"scheduler-hidden");Pump(300);
+        Check(hidden==1&&!attached()&&!watchdog.IsEnabled,"hidden windows still complete delayed callbacks and release the fallback timer");
+        var checkbox=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyCheckBox"));
+        window.Content=checkbox;window.Show();Pump(80);
+        var checkboxType=checkbox.GetType();
+        bool original=(bool)checkboxType.GetProperty("Checked").GetValue(checkbox);
+        Action click=()=> {
+            checkbox.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice,Environment.TickCount,System.Windows.Input.MouseButton.Left){RoutedEvent=System.Windows.UIElement.MouseLeftButtonDownEvent});
+            checkbox.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice,Environment.TickCount,System.Windows.Input.MouseButton.Left){RoutedEvent=System.Windows.UIElement.MouseLeftButtonUpEvent});
+        };
+        click();bool first=(bool)checkboxType.GetProperty("Checked").GetValue(checkbox);click();
+        Check(first!=original&&(bool)checkboxType.GetProperty("Checked").GetValue(checkbox)==original,"rapid user checkbox events are accepted during the previous transition");
+        Pump(500);Check(!attached(),"interrupted checkbox transitions complete and release their animation groups");
+        window.Content=null;window.Close();
+    }
     static void InteractionChecks() {
         Call("ModBase","RunInUi");
-        app.GetType("PCL.ModAnimation").GetMethod("AniStart",Type.EmptyTypes).Invoke(null,null);
+        AnimationSchedulerChecks();
         Check((bool)Call("Settings","Get","UiSmoothScroll")&&(bool)Call("Settings","Get","UiNavigationAnimation"),"scroll and navigation preferences default enabled");
         var viewer=(System.Windows.Controls.ScrollViewer)Activator.CreateInstance(app.GetType("PCL.MyScrollViewer"));
         viewer.Width=350;viewer.Height=240;viewer.VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto;
         viewer.Content=new System.Windows.Controls.Border{Height=2800,Background=System.Windows.Media.Brushes.White};
+        var scrollPreview=new System.Windows.Window{Content=viewer,Width=350,Height=240,ShowActivated=false,ShowInTaskbar=false,WindowStyle=System.Windows.WindowStyle.None};scrollPreview.Show();Pump(60);
         viewer.Measure(new System.Windows.Size(350,240));viewer.Arrange(new System.Windows.Rect(0,0,350,240));viewer.UpdateLayout();Pump(40);
         Check(viewer.ScrollableHeight>2000,"smooth scroll uses an actual scrollable WPF layout");
         Action<double> scroll=d=>viewer.GetType().GetMethod("PerformVerticalOffsetDelta").Invoke(viewer,new object[]{d});
@@ -163,17 +212,25 @@ class SmokeTests {
         viewer.GetType().GetMethod("ScrollToHome").Invoke(viewer,null);viewer.UpdateLayout();Check(viewer.VerticalOffset==0,"return to top cancels pending wheel motion");
         scroll(100);viewer.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.FrameworkElement.UnloadedEvent));
         Check(!(bool)viewer.GetType().GetProperty("HasSmoothScroll").GetValue(viewer),"unloading the viewer cancels its animation clock");
-        var host=new System.Windows.Controls.Border();var first=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyPageRight"));
+        var hostTransform=new System.Windows.Media.ScaleTransform(1,1);
+        var host=new System.Windows.Controls.Border{RenderTransform=hostTransform};var first=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyPageRight"));
         first.GetType().GetProperty("Child").SetValue(first,new System.Windows.Controls.TextBlock{Text="first"});
         var last=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyPageRight"));last.GetType().GetProperty("Child").SetValue(last,new System.Windows.Controls.TextBlock{Text="last"});
         int firstEnter=0,lastEnter=0;
         var enter=first.GetType().GetEvent("PageEnter");enter.AddEventHandler(first,Delegate.CreateDelegate(enter.EventHandlerType,new Counter(()=>firstEnter++),typeof(Counter).GetMethod("Invoke")));
         enter.AddEventHandler(last,Delegate.CreateDelegate(enter.EventHandlerType,new Counter(()=>lastEnter++),typeof(Counter).GetMethod("Invoke")));
-        Call("ModNavigation","MountRightPage",host,first);Check(ReferenceEquals(host.Child,first),"page is mounted synchronously before any exit animation delay");
+        Call("ModNavigation","MountRightPage",host,first);Check(ReferenceEquals(Call("ModNavigation","GetCurrentRightPage",host),first),"page is mounted synchronously before any exit animation delay");
         Call("ModNavigation","MountRightPage",host,last);Pump(60);
-        Check(firstEnter==0&&lastEnter==1&&ReferenceEquals(host.Child,last),"rapid navigation enters only the latest requested page");
+        Check(firstEnter==0&&lastEnter==1&&ReferenceEquals(Call("ModNavigation","GetCurrentRightPage",host),last),"rapid navigation enters only the latest requested page");
+        Check(ReferenceEquals(host.RenderTransform,hostTransform)&&host.Opacity==1,"rapid navigation restores the original host pose without a transparent first pass");
         Pump(300);Check(last.GetType().GetProperty("PageState").GetValue(last).ToString()=="ContentStay","page reaches a usable stable state within the short transition");
         Call("ModNavigation","MountRightPage",host,last);Pump(30);Check(lastEnter==1,"selecting the current page does not enqueue another entry");
+        var oldContent=(System.Windows.FrameworkElement)last.GetType().GetProperty("Child").GetValue(last);
+        int exits=0;var exit=last.GetType().GetEvent("PageExit");exit.AddEventHandler(last,Delegate.CreateDelegate(exit.EventHandlerType,new Counter(()=>exits++),typeof(Counter).GetMethod("Invoke")));
+        Call("ModNavigation","MountRightPage",host,first);Pump(30);
+        Check(exits==1&&oldContent.Visibility==System.Windows.Visibility.Visible&&oldContent.IsHitTestVisible,"immediate navigation exits once without collapsing or disabling detached content");
+        Check(last.GetType().GetProperty("PageState").GetValue(last).ToString()=="Empty","detached navigation page resets lifecycle state");
+        Call("ModNavigation","MountRightPage",host,last);Pump(30);
         Check(((string)Call("SettingService","RestartNotice","UiStartupAnimation",true)).Contains("下次启动"),"user startup toggle provides a restart hint");
         Check(Call("SettingService","RestartNotice","UiStartupAnimation",false)==null,"loading saved preferences never emits a restart hint");
         Check(Call("SettingService","RestartNotice","UiSmoothScroll",true)==null,"live scroll preference does not show an unnecessary restart hint");
@@ -188,9 +245,111 @@ class SmokeTests {
         Call("ModNavigation","MountRightPage",host,first);Pump(25);
         Check(first.GetType().GetProperty("PageState").GetValue(first).ToString()=="ContentStay","disabling navigation motion enters content without an animation wait");
         SetNormalPreference("UiNavigationAnimation",true);
+        RetainedNavigationChecks();
+        PageMotionChecks();
         HeaderChecks();
         WindowChecks();
+        WindowCaptureChecks();
         CapturePage(viewer,350,240,"smooth-scroll-preview.png");
+        scrollPreview.Content=null;scrollPreview.Close();
+        DiagnosticsChecks();
+    }
+    static void RetainedNavigationChecks() {
+        SetNormalPreference("UiNavigationAnimation",false);
+        var host=new System.Windows.Controls.Border();
+        var window=new System.Windows.Window{Content=host,Width=520,Height=330,ShowActivated=false,ShowInTaskbar=false,WindowStyle=System.Windows.WindowStyle.None};
+        var pageType=app.GetType("PCL.MyPageRight");
+        Func<System.Windows.FrameworkElement,bool,System.Windows.FrameworkElement> make=(child,retain)=>{
+            var page=(System.Windows.FrameworkElement)Activator.CreateInstance(pageType);pageType.GetProperty("Child").SetValue(page,child);pageType.GetProperty("RetainNavigationLayout").SetValue(page,retain);return page;
+        };
+        var spinner=(System.Windows.FrameworkElement)Activator.CreateInstance(app.GetType("PCL.MyLoading"));
+        var measure=new MeasureProbe{Child=spinner};var first=make(measure,true);var second=make(new System.Windows.Controls.TextBlock{Text="second"},true);
+        int loads=0,unloads=0,activations=0;first.Loaded+=(s,e)=>loads++;first.Unloaded+=(s,e)=>unloads++;
+        var activate=pageType.GetEvent("NavigationActivated");activate.AddEventHandler(first,Delegate.CreateDelegate(activate.EventHandlerType,new NavigationCounter(()=>activations++),typeof(NavigationCounter).GetMethod("Invoke")));
+        Call("ModNavigation","MountRightPage",host,first);window.Show();Pump(90);
+        var looping=spinner.GetType().GetField("IsLooping",BindingFlags.Instance|BindingFlags.NonPublic);
+        Check(first.IsLoaded&&first.IsVisible&&(bool)looping.GetValue(spinner),"retained page starts its loading animation when visible");
+        Call("ModNavigation","MountRightPage",host,second);Pump(50);
+        Check(first.IsLoaded&&!first.IsVisible&&loads==1&&unloads==0,"switching a retained page preserves its loaded visual tree without leaving it visible");
+        Check(!(bool)looping.GetValue(spinner),"a hidden retained page immediately stops its loading loop");
+        int measures=measure.Measures;window.Width+=40;Pump(40);
+        Check(measure.Measures==measures,"resizing the active viewport does not remeasure hidden page content");
+        Call("ModNavigation","MountRightPage",host,first);Pump(60);
+        Check(loads==1&&activations==1&&first.IsVisible&&(bool)looping.GetValue(spinner),"returning to a retained page refreshes navigation state and resumes its loading loop without reloading the tree");
+        for(int i=0;i<6;i++){var page=make(new System.Windows.Controls.TextBlock{Text="retained "+i},true);Call("ModNavigation","MountRightPage",host,page);Pump(20);}
+        Check(((System.Windows.Controls.Panel)host.Child).Children.Count==4&&!first.IsLoaded&&first.Parent==null,"navigation retains at most four pages and unloads evicted content");
+        var temporary=make(new System.Windows.Controls.TextBlock{Text="temporary"},false);Call("ModNavigation","MountRightPage",host,temporary);Pump(25);
+        Call("ModNavigation","MountRightPage",host,second);Pump(25);
+        Check(temporary.Parent==null&&!temporary.IsLoaded,"pages that require unloading are removed immediately when navigation leaves them");
+        Func<double,System.Windows.Controls.Grid> shared=width=>{var grid=new System.Windows.Controls.Grid();grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition{Width=System.Windows.GridLength.Auto,SharedSizeGroup="name"});grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());grid.Children.Add(new System.Windows.Controls.Border{Width=width,Height=20});return grid;};
+        var small=shared(40);var wide=shared(300);var smallPage=make(small,true);var widePage=make(wide,true);
+        Call("ModNavigation","MountRightPage",host,smallPage);Pump(30);Call("ModNavigation","MountRightPage",host,widePage);Pump(30);Call("ModNavigation","MountRightPage",host,smallPage);Pump(30);
+        Check(Math.Abs(small.ColumnDefinitions[0].ActualWidth-40)<1,"retained pages keep their shared column sizes isolated from hidden pages");
+        window.Close();Pump(50);Check(((System.Windows.Controls.Panel)host.Child).Children.Cast<System.Windows.FrameworkElement>().All(page=>!page.IsLoaded)&&!(bool)looping.GetValue(spinner),"closing the navigation host unloads retained visuals and stops hidden animation work");
+        SetNormalPreference("UiNavigationAnimation",true);
+    }
+    sealed class NavigationCounter {
+        readonly Action action;public NavigationCounter(Action callback){action=callback;}
+        public void Invoke(object sender,System.Windows.RoutedEventArgs args){action();}
+    }
+    static void DiagnosticsChecks() {
+        Check(Call("ModUiDiagnostics","MeasureUiPhase","disabled-test")==null,"UI timing scopes allocate nothing when diagnostics are disabled");
+        string previous=Environment.GetEnvironmentVariable("PCL_UI_PROFILE");
+        string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"ui-timing-test.csv");
+        try {
+            Environment.SetEnvironmentVariable("PCL_UI_PROFILE",path);Call("ModUiDiagnostics","StartUiDiagnostics");
+            using((IDisposable)Call("ModUiDiagnostics","MeasureUiPhase","test.phase")){Pump(30);}
+            Pump(120);Call("ModUiDiagnostics","Detach");Pump(150);
+            Check(File.Exists(path)&&File.ReadAllText(path).Contains("test.phase"),"explicit UI timing records only when enabled");
+            Check(Call("ModUiDiagnostics","MeasureUiPhase","after-stop")==null,"finished diagnostics stop accepting phase records instead of retaining an unwritten queue");
+        } finally { Environment.SetEnvironmentVariable("PCL_UI_PROFILE",previous); }
+    }
+    static void PageMotionChecks() {
+        var body=new System.Windows.Controls.Border{Background=System.Windows.Media.Brushes.AliceBlue,Opacity=.8};
+        var original=new System.Windows.Media.ScaleTransform(1,1);body.RenderTransform=original;
+        var window=new System.Windows.Window{Content=body,Width=360,Height=220,ShowActivated=false,ShowInTaskbar=false,WindowStyle=System.Windows.WindowStyle.None};
+        window.Show();Pump(60);
+        var type=app.GetType("PCL.MyPageMotion");int completed=0;
+        var motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{body},new Action(()=>completed++),false});
+        var initial=(System.Windows.Media.TransformGroup)body.RenderTransform;
+        Check(Math.Abs(initial.Children.OfType<System.Windows.Media.TranslateTransform>().Last().Y-10)<.001,"page is positioned at its animation origin before the first clock tick");
+        Pump(55);var transform=body.RenderTransform as System.Windows.Media.TransformGroup;
+        var shift=transform==null?null:transform.Children.OfType<System.Windows.Media.TranslateTransform>().LastOrDefault();
+        Check(shift!=null&&shift.Y>=0&&shift.Y<10&&completed==0,"page container transition presents intermediate positions without waiting for an exit animation");
+        Check(body.IsHitTestVisible,"page animation keeps content available for input");
+        Check(body.CacheMode==null&&Math.Abs(body.Opacity-.8)<.001&&!body.HasAnimatedProperties,"page movement avoids a full-page bitmap cache and opacity layer");
+        Pump(260);
+        Check(completed==1&&ReferenceEquals(body.RenderTransform,original)&&body.CacheMode==null&&Math.Abs(body.Opacity-.8)<.001&&!body.HasAnimatedProperties,"page completion restores transform, opacity and temporary bitmap cache");
+        motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{body},new Action(()=>completed++),false});motion.Dispose();Pump(230);
+        Check(completed==1&&ReferenceEquals(body.RenderTransform,original)&&body.CacheMode==null,"cancelling before the first animation frame drops the pending completion");
+        motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{body},new Action(()=>completed++),false});
+        bool firstFrame=false;EventHandler slowLayout=null;
+        slowLayout=(s,e)=>{System.Windows.Media.CompositionTarget.Rendering-=slowLayout;firstFrame=true;System.Threading.Thread.Sleep(140);};
+        System.Windows.Media.CompositionTarget.Rendering+=slowLayout;Pump(165);
+        transform=body.RenderTransform as System.Windows.Media.TransformGroup;
+        shift=transform==null?null:transform.Children.OfType<System.Windows.Media.TranslateTransform>().LastOrDefault();
+        Check(firstFrame&&shift!=null&&shift.Y>2&&completed==1,"a slow initial render does not consume the page animation before its first visible frame");
+        Pump(300);Check(completed==2&&ReferenceEquals(body.RenderTransform,original),"page motion finishes normally after the first-frame barrier");
+        motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{body},new Action(()=>completed++),false});
+        EventHandler cancelBeforeStart=null;
+        cancelBeforeStart=(s,e)=>{System.Windows.Media.CompositionTarget.Rendering-=cancelBeforeStart;motion.Dispose();};
+        System.Windows.Media.CompositionTarget.Rendering+=cancelBeforeStart;Pump(260);
+        Check(completed==2&&ReferenceEquals(body.RenderTransform,original),"cancellation between the first render and clock start aborts the queued animation");
+        motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{body},new Action(()=>completed++),true});Pump(35);
+        body.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.FrameworkElement.UnloadedEvent));Pump(230);
+        Check(completed==2&&ReferenceEquals(body.RenderTransform,original)&&body.CacheMode==null&&!body.HasAnimatedProperties,"leaving a page cancels its motion and releases clocks, handlers and cache");
+        var weak=MakePageMotionProbe(type);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
+        Check(!weak.IsAlive,"disposed page motion does not retain its target visual");
+        var existingCache=new System.Windows.Media.BitmapCache();body.CacheMode=existingCache;
+        motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{body},new Action(()=>{}),false});motion.Dispose();
+        Check(ReferenceEquals(body.CacheMode,existingCache),"page motion preserves a cache supplied by the page itself");body.CacheMode=null;
+        window.Content=null;window.Close();
+    }
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static WeakReference MakePageMotionProbe(Type type) {
+        var target=new System.Windows.Controls.Border();
+        var motion=(IDisposable)Activator.CreateInstance(type,new object[]{new System.Windows.FrameworkElement[]{target},new Action(()=>{}),false});
+        motion.Dispose();return new WeakReference(target);
     }
     static void HeaderChecks() {
         Check(!System.Windows.Application.Current.Windows.Cast<System.Windows.Window>().Any(window=>window.GetType().Name=="FormMain"),"test resources never auto-launch the production startup window");
@@ -227,9 +386,31 @@ class SmokeTests {
         Pump(300);state=ReadIndicatorState(indicator);
         Check(layoutProbe.Measures-measuresBefore<=2&&!indicator.HasAnimatedProperties,"tab glide avoids per-frame width/layout animation");
         Check(Math.Abs(state[0]-finish)<1&&state[2]==0&&!indicator.HasAnimatedProperties,"rapid tab selection finishes on the latest tab and releases its clock");
+        var snapshotDrawing=(System.Windows.Media.DrawingGroup)indicator.GetType().GetMethod("GetSnapshotDrawing",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(indicator,null);
+        Check(snapshotDrawing!=null&&snapshotDrawing.IsFrozen,"minimize can capture selection ink without traversing its worker visual tree");
         var countField=indicator.GetType().GetField("ActiveRenderers");
         Check((int)countField.GetValue(null)==1,"navigation uses exactly one independent drawing dispatcher");
+        var beginPageMotion=indicator.GetType().GetMethod("BeginPageMotion",BindingFlags.Instance|BindingFlags.NonPublic);
+        var localUsers=indicator.GetType().GetField("PageMotionUsers",BindingFlags.Instance|BindingFlags.NonPublic);
+        var lease1=(IDisposable)beginPageMotion.Invoke(indicator,null);var lease2=(IDisposable)beginPageMotion.Invoke(indicator,null);
+        Check((int)localUsers.GetValue(indicator)==2,"left and right page transitions share one coordinated capsule drawing");
+        var startButton=selector.Children[0];startButton.GetType().GetMethod("SetChecked").Invoke(startButton,new object[]{true,false,false});
+        Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,true);Pump(45);state=ReadIndicatorState(indicator);
+        Check(state[0]>6&&state[0]<finish&&state[2]==1,"capsule handoff retains intermediate positions on the page drawing clock");
+        var worker=indicator.GetType().GetField("Session",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(indicator);
+        var paused=(System.Threading.Tasks.Task<double[]>)worker.GetType().GetMethod("ReadStateAsync").Invoke(worker,null);
+        Check(paused.Wait(500)&&paused.Result[2]==0,"the independent capsule clock stops while the page clock owns the transition");
+        Check(indicator.GetType().GetMethod("GetSnapshotDrawing",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(indicator,null)==null,"minimize does not paint coordinated selection text twice");
+        lease1.Dispose();lease1.Dispose();Check((int)localUsers.GetValue(indicator)==1,"overlapping page transitions release their drawing ownership exactly once");
+        lease2.Dispose();Check((int)localUsers.GetValue(indicator)==0,"the last page cancellation releases ownership while the capsule finishes its remaining motion");
+        var afterCancel=ReadIndicatorState(indicator);Check(Math.Abs(afterCancel[0]-state[0])<1,"interrupting a page transition does not snap the capsule to its destination");
+        Pump(220);
+        Check(!(bool)indicator.GetType().GetField("LocalActive",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(indicator)&&indicator.GetType().GetField("ReturnTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(indicator)==null,"capsule handback releases its one-shot timer and coordinated drawing");
+        chosen.GetType().GetMethod("SetChecked").Invoke(chosen,new object[]{true,false,false});Call("ModNavigation","MoveTitleSelection",tabs,selector,indicator,false);Pump(30);
         var firstButton=(System.Windows.FrameworkElement)selector.Children[0];
+        firstButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice,Environment.TickCount,System.Windows.Input.MouseButton.Left){RoutedEvent=System.Windows.UIElement.MouseLeftButtonDownEvent});
+        Check((bool)firstButton.GetType().GetProperty("Checked").GetValue(firstButton),"top navigation selects on press without waiting for mouse release");
+        chosen.GetType().GetMethod("SetChecked").Invoke(chosen,new object[]{true,false,false});
         var peer=System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(firstButton);
         Check(peer!=null&&peer.GetName()=="启动"&&peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke)!=null,"navigation exposes a named standard accessibility action");
         peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke).GetType().GetMethod("Invoke").Invoke(peer,null);Pump(30);
@@ -251,8 +432,14 @@ class SmokeTests {
         Check(Math.Abs(state[0]-6)<1&&state[2]==0,"disabling navigation animation snaps directly without leaving clocks");
         SetNormalPreference("UiNavigationAnimation",true);
         for(int i=0;i<3;i++) {
-            preview.Content=null;Pump(100);Check((int)countField.GetValue(null)==0,"unloading navigation shuts down its dispatcher: "+i);
-            preview.Content=layoutProbe;Pump(100);Check((int)countField.GetValue(null)==1,"reloading navigation creates one fresh visual target: "+i);
+            var staleLease=i==0?(IDisposable)beginPageMotion.Invoke(indicator,null):null;
+            preview.Content=null;var shutdown=System.Diagnostics.Stopwatch.StartNew();
+            do{Pump(15);}while((int)countField.GetValue(null)!=0&&shutdown.ElapsedMilliseconds<1000);
+            Check((int)countField.GetValue(null)==0,"unloading navigation shuts down its dispatcher: "+i);
+            preview.Content=layoutProbe;shutdown.Restart();
+            do{Pump(15);}while((int)countField.GetValue(null)!=1&&shutdown.ElapsedMilliseconds<1000);
+            Check((int)countField.GetValue(null)==1,"reloading navigation creates one fresh visual target: "+i);
+            if(staleLease!=null){var currentLease=(IDisposable)beginPageMotion.Invoke(indicator,null);staleLease.Dispose();Check((int)localUsers.GetValue(indicator)==1,"a lease from an unloaded header cannot release a new drawing session");currentLease.Dispose();}
         }
         preview.Close();Pump(150);
         Check((int)countField.GetValue(null)==0,"closing the header releases the independent drawing thread");
@@ -279,10 +466,33 @@ class SmokeTests {
             foreach(var descendant in Descendants(child))yield return descendant;
         }
     }
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetGuiResources(IntPtr process,int kind);
+    static void WindowCaptureChecks() {
+        if(!Environment.UserInteractive||(System.Windows.Media.RenderCapability.Tier>>16)<2) {Console.WriteLine("SKIP: visible desktop capture requires an interactive hardware-rendered session; minimize uses its existing fallback here.");return;}
+        var owner=new System.Windows.Window{Title="Window capture verification",Width=320,Height=180,Left=120,Top=120,WindowStyle=System.Windows.WindowStyle.None,ResizeMode=System.Windows.ResizeMode.NoResize,ShowActivated=false,ShowInTaskbar=false,Topmost=true,Content=new System.Windows.Controls.Border{Background=System.Windows.Media.Brushes.CornflowerBlue}};
+        owner.Show();Pump(120);
+        var origin=owner.PointToScreen(new System.Windows.Point());var scale=System.Windows.PresentationSource.FromVisual(owner).CompositionTarget.TransformToDevice.M11;
+        var bounds=new System.Windows.Rect(origin.X,origin.Y,owner.ActualWidth*scale,owner.ActualHeight*scale);var handle=new System.Windows.Interop.WindowInteropHelper(owner).Handle;
+        var capture=(System.Windows.Media.Imaging.BitmapSource)Call("ModWindowSnapshot","CaptureVisibleWindow",handle,bounds,scale);
+        Check(capture!=null&&capture.IsFrozen&&capture.PixelWidth==(int)bounds.Width,"visible launcher frame capture returns a frozen bitmap at device resolution");
+        var converted=new System.Windows.Media.Imaging.FormatConvertedBitmap(capture,System.Windows.Media.PixelFormats.Pbgra32,null,0);var pixel=new byte[4];converted.CopyPixels(new System.Windows.Int32Rect(capture.PixelWidth/2,capture.PixelHeight/2,1,1),pixel,4,0);
+        Check(Math.Abs(pixel[0]-237)<=2&&Math.Abs(pixel[1]-149)<=2&&Math.Abs(pixel[2]-100)<=2&&pixel[3]==255,"frame capture preserves displayed color without rerendering the visual tree");
+        int resources=GetGuiResources(System.Diagnostics.Process.GetCurrentProcess().Handle,0);
+        for(int i=0;i<20;i++)Call("ModWindowSnapshot","CaptureVisibleWindow",handle,bounds,scale);
+        Check(GetGuiResources(System.Diagnostics.Process.GetCurrentProcess().Handle,0)<=resources+2,"repeated frame captures release native bitmaps and device contexts");
+        var cover=new System.Windows.Window{Width=100,Height=100,Left=140,Top=140,WindowStyle=System.Windows.WindowStyle.None,ResizeMode=System.Windows.ResizeMode.NoResize,ShowActivated=false,ShowInTaskbar=false,Topmost=true,Background=System.Windows.Media.Brushes.White};cover.Show();Pump(60);
+        Check(Call("ModWindowSnapshot","CaptureVisibleWindow",handle,bounds,scale)==null,"covered windows use the visual-tree fallback instead of capturing another window");
+        cover.Close();owner.Close();
+    }
     static void WindowChecks() {
         var buttonBounds=new System.Windows.Rect(-1200,1040,66,40);
         var endpoint=(System.Windows.Rect)Call("ModTaskbarTarget","TaskbarButtonEndpoint",buttonBounds);
         Check(Math.Abs(endpoint.X+endpoint.Width/2-buttonBounds.X-buttonBounds.Width/2)<.001&&Math.Abs(endpoint.Y+endpoint.Height/2-buttonBounds.Y-buttonBounds.Height/2)<.001,"minimize endpoint is exactly the taskbar button center");
+        Check(endpoint==buttonBounds,"minimize preserves the measured icon size instead of collapsing to a point");
+        var iconBounds=new System.Windows.Rect(-1188,1048,32,32);
+        Check((System.Windows.Rect)Call("ModTaskbarTarget","ResolveTaskbarIconBounds",buttonBounds,(System.Windows.Rect?)iconBounds,1.5)==iconBounds,"taskbar image bounds determine the final animation size");
+        var fallbackIcon=(System.Windows.Rect)Call("ModTaskbarTarget","ResolveTaskbarIconBounds",buttonBounds,null,1.5);
+        Check(fallbackIcon.Width==36&&fallbackIcon.Height==36,"taskbar icon fallback respects monitor DPI");
         var type=app.GetType("PCL.WindowMotion");
         var targetMethod=type.GetMethod("ChooseTaskbarTarget",BindingFlags.Static|BindingFlags.NonPublic);
         var screen=new System.Windows.Rect(-1920,0,1920,1080);var source=new System.Windows.Rect(-1400,180,600,400);
@@ -304,15 +514,32 @@ class SmokeTests {
             var warp=(System.Windows.FrameworkElement)Activator.CreateInstance(surfaceType,new object[]{image,new System.Windows.Rect(80,80,600,400),target,edge,800d,640d});
             var mesh=(System.Windows.Media.Media3D.MeshGeometry3D)surfaceType.GetField("Mesh",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(warp);
             bool valid=true;
-            foreach(double p in new[]{0d,.1,.25,.5,.75,1d}) {
+            foreach(double p in new[]{0d,.1,.25,.5,.75,.82,1d}) {
                 warp.SetValue(progress,p);
                 valid &= mesh.Positions.Count==297&&mesh.Positions.All(point=>!double.IsNaN(point.X)&&!double.IsInfinity(point.X)&&!double.IsNaN(point.Y)&&!double.IsInfinity(point.Y));
                 if(p==.5)CapturePage(warp,800,640,"window-warp-"+edge+".png");
-                if(p==1)valid &= Math.Abs(mesh.Positions[0].X-target.X)<.01&&Math.Abs(-mesh.Positions[0].Y-target.Y)<.01;
+                if(p>=.82)valid &= Math.Abs(mesh.Positions[0].X-target.X)<.01&&Math.Abs(-mesh.Positions[0].Y-target.Y)<.01;
             }
             Check(valid,"bounded mesh reaches its taskbar endpoint: edge "+edge);
             surfaceType.GetMethod("Release").Invoke(warp,null);
         }
+        var colorWarp=(System.Windows.FrameworkElement)Activator.CreateInstance(surfaceType,new object[]{image,new System.Windows.Rect(0,0,600,400),new System.Windows.Rect(300,390,32,32),3,600d,400d});
+        colorWarp.Measure(new System.Windows.Size(600,400));colorWarp.Arrange(new System.Windows.Rect(0,0,600,400));colorWarp.UpdateLayout();
+        var reproduced=new System.Windows.Media.Imaging.RenderTargetBitmap(600,400,96,96,System.Windows.Media.PixelFormats.Pbgra32);reproduced.Render(colorWarp);
+        foreach(var pixel in new[]{new System.Windows.Int32Rect(5,5,1,1),new System.Windows.Int32Rect(300,250,1,1)}) {
+            var before=new byte[4];var after=new byte[4];image.CopyPixels(pixel,before,4,0);reproduced.CopyPixels(pixel,after,4,0);
+            Check(Enumerable.Range(0,4).All(channel=>Math.Abs(before[channel]-after[channel])<=2),"minimize mesh preserves source color and alpha at "+pixel.X+";"+pixel.Y);
+        }
+        surfaceType.GetMethod("Release").Invoke(colorWarp,null);
+        var alphaVisual=new System.Windows.Media.DrawingVisual();
+        using(var dc=alphaVisual.RenderOpen())dc.DrawRectangle(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(128,42,96,160)),null,new System.Windows.Rect(0,0,32,32));
+        var alphaImage=new System.Windows.Media.Imaging.RenderTargetBitmap(32,32,96,96,System.Windows.Media.PixelFormats.Pbgra32);alphaImage.Render(alphaVisual);alphaImage.Freeze();
+        var alphaWarp=(System.Windows.FrameworkElement)Activator.CreateInstance(surfaceType,new object[]{alphaImage,new System.Windows.Rect(0,0,32,32),new System.Windows.Rect(0,30,8,8),3,32d,32d});
+        alphaWarp.Measure(new System.Windows.Size(32,32));alphaWarp.Arrange(new System.Windows.Rect(0,0,32,32));alphaWarp.UpdateLayout();
+        var alphaResult=new System.Windows.Media.Imaging.RenderTargetBitmap(32,32,96,96,System.Windows.Media.PixelFormats.Pbgra32);alphaResult.Render(alphaWarp);
+        var originalPixel=new byte[4];var resultPixel=new byte[4];var center=new System.Windows.Int32Rect(16,16,1,1);alphaImage.CopyPixels(center,originalPixel,4,0);alphaResult.CopyPixels(center,resultPixel,4,0);
+        Check(Enumerable.Range(0,4).All(channel=>Math.Abs(originalPixel[channel]-resultPixel[channel])<=2),"minimize preserves partially transparent pixels without additive color blending");
+        surfaceType.GetMethod("Release").Invoke(alphaWarp,null);
         SetNormalPreference("UiMinimizeAnimation",true);SetNormalPreference("UiCloseAnimation",true);
         var motion=Activator.CreateInstance(type,new object[]{window});
         Action minimize=()=>type.GetMethod("Minimize").Invoke(motion,null);
@@ -434,8 +661,8 @@ class SmokeTests {
             bool failed=false;try{Call("ModProjectUpdate","ParseProjectVersion",tag);}catch{failed=true;}
             Check(failed,"reject invalid stable version "+tag);
         }
-        string notes=(string)Call("ModProjectUpdate","FormatProjectNotes","# Intro\n- [ + ] 增加多账号\n[ - ] 修复下载\nother details");
-        Check(notes=="[ + ] 增加多账号\r\n[ - ] 修复下载","display added features and bug fixes in requested format");
+        string notes=(string)Call("ModProjectUpdate","FormatProjectNotes","# Intro\n- [ + ] 增加多账号\n[ - ] 修复下载\n- [ ? ] 页面切换仍卡\nother details");
+        Check(notes=="[ + ] 增加多账号\r\n[ - ] 修复下载\r\n[ ? ] 页面切换仍卡","display added features, bug fixes and known issues in requested format");
         const string prefix="https://github.com/LGCMcn/PCL3_ModDownloadFix/releases/download/v1.3.0/";
         Check((bool)Call("ModProjectUpdate","IsProjectAssetUrl",prefix+"PCL.DownloadFix.Windows-x64.zip","v1.3.0","PCL.DownloadFix.Windows-x64.zip"),"accept release asset from exact project and tag");
         foreach(string url in new[]{prefix.Replace("LGCMcn","other")+"PCL.DownloadFix.Windows-x64.zip",prefix.Replace("https:","http:")+"PCL.DownloadFix.Windows-x64.zip",prefix+"PCL.DownloadFix.Windows-x64.zip?redirect=evil"})

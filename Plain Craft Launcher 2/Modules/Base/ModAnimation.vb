@@ -2,6 +2,7 @@
 '使用 Ani 作为方法或属性的开头，使用 Aa 作为单个动画对象的开头（便于自动补全）
 
 Imports System.Windows.Media.Effects
+Imports System.Windows.Threading
 
 Public Module ModAnimation
 
@@ -23,6 +24,7 @@ Public Module ModAnimation
     Public Class AniGroupEntry
         Public Data As List(Of AniData)
         Public StartTick As Long
+        Public LastTick As Long
         Public Uuid As Integer = GetUuid()
     End Class
     ''' <summary>
@@ -751,7 +753,11 @@ Public Module ModAnimation
     ''' <param name="AniGroup">由 Aa 开头的函数初始化的 AniData 对象集合。</param>
     ''' <param name="Name">动画组的名称。如果重复会直接停止同名动画组。</param>
     Public Sub AniStart(AniGroup As IList, Optional Name As String = "", Optional RefreshTime As Boolean = False)
-        If RefreshTime Then AniLastTick = GetTimeMs() '避免处理动画时已经造成了极大的延迟，导致动画突然结束
+        Dim Ui = Application.Current.Dispatcher
+        If Not Ui.CheckAccess() Then
+            Ui.BeginInvoke(New Action(Sub() AniStart(AniGroup, Name, RefreshTime)))
+            Return
+        End If
         '添加到正在执行的动画组
         Dim AllAnis = New List(Of AniData)
         For Each Element In AniGroup
@@ -762,12 +768,12 @@ Public Module ModAnimation
             End If
         Next
         Dim NewEntry As New AniGroupEntry With {.Data = AllAnis, .StartTick = GetTimeMs()}
+        NewEntry.LastTick = NewEntry.StartTick
         If Name = "" Then
             Name = NewEntry.Uuid
-        Else
-            AniStop(Name)
         End If
-        AniGroups.Add(Name, NewEntry)
+        AniGroups(Name) = NewEntry
+        EnsureAnimationFrames()
     End Sub
     ''' <summary>
     ''' 开始一个动画组。
@@ -780,7 +786,13 @@ Public Module ModAnimation
     ''' </summary>
     ''' <param name="name">需要停止的动画组的名称。</param>
     Public Sub AniStop(Name As String)
+        Dim Ui = Application.Current.Dispatcher
+        If Not Ui.CheckAccess() Then
+            Ui.BeginInvoke(New Action(Sub() AniStop(Name)))
+            Return
+        End If
         AniGroups.Remove(Name)
+        If AniGroups.Count = 0 Then DetachAnimationFrames()
     End Sub
     ''' <summary>
     ''' 获取动画是否正在进行中。
@@ -794,6 +806,15 @@ Public Module ModAnimation
     Private AniCount As Integer = 0
     Private AniFPSCounter As Integer = 0
     Private AniFPSTimer As Long = 0
+    Private AnimationFrameAttached As Boolean
+    Private AnimationFrameBusy As Boolean
+    Private AnimationRenderTime As TimeSpan = TimeSpan.MinValue
+    Private AnimationWatchdog As DispatcherTimer
+    Friend ReadOnly Property IsAnimationFrameAttached As Boolean
+        Get
+            Return AnimationFrameAttached
+        End Get
+    End Property
     ''' <summary>
     ''' 当前的动画 FPS。
     ''' </summary>
@@ -803,51 +824,72 @@ Public Module ModAnimation
     ''' 开始动画执行。
     ''' </summary>
     Public Sub AniStart()
-        '初始化计时器
+        If AniRunning Then Return
         AniLastTick = GetTimeMs()
         AniFPSTimer = AniLastTick
-        AniRunning = True '标记动画执行开始
+        AniRunning = True
+        AddHandler Application.Current.Exit, AddressOf StopAnimationEngine
+        EnsureAnimationFrames()
+    End Sub
 
-        RunInNewThread(
-        Sub()
-            Try
-                Logger.Info("动画线程开始")
-                Do While True
-                    '两帧之间的间隔时间
-                    Dim DeltaTime As Long = (GetTimeMs() - AniLastTick).Clamp(0, 100000)
-                    If DeltaTime < 15 Then GoTo Sleeper
-                    AniLastTick = GetTimeMs()
-                    '记录 FPS
-                    If ModeDebug Then
-                        If (AniLastTick - AniFPSTimer).Clamp(0, 100000) >= 500 Then
-                            AniFPS = AniFPSCounter
-                            AniFPSCounter = 0
-                            AniFPSTimer = AniLastTick
-                        End If
-                        AniFPSCounter += 2
-                    End If
-                    '执行动画
-                    Application.Current.Dispatcher.Invoke(
-                    Sub()
-                        AniCount = 0
-                        AniTimer(DeltaTime * AniSpeed)
-                        If RandomInteger(0, 64 * If(ModeDebug, 5, 30)) = 0 AndAlso ((AniFPS < 62 AndAlso AniFPS > 0) OrElse AniCount > 4 OrElse NetManager.FileRemain <> 0) Then
-                            Logger.Info($"FPS {AniFPS}, 动画 {AniCount}, 下载中 {NetManager.FileRemain}（{StringUtils.FormatByteSize(NetManager.Speed)}/s）")
-                            If NetManager.FileRemain < 5 Then
-                                For Each File In NetManager.AllFiles.Values
-                                    If File.State < NetState.Finished Then Logger.Trace($"- {File.State} {StringUtils.FormatByteSize(File.Speed)}/s {File.LocalPath}")
-                                Next
-                            End If
-                        End If
-                    End Sub, Threading.DispatcherPriority.Background)
-Sleeper:
-                    '控制 FPS
-                    Thread.Sleep(1)
-                Loop
-            Catch ex As Exception
-                Logger.Error(ex, "动画帧执行失败", LogBehavior.AlertThenCrash)
-            End Try
-        End Sub, "Animation", ThreadPriority.AboveNormal)
+    Private Sub EnsureAnimationFrames()
+        If Not AniRunning OrElse AnimationFrameAttached OrElse AniGroups.Count = 0 Then Return
+        AniLastTick = GetTimeMs()
+        AnimationRenderTime = TimeSpan.MinValue
+        AnimationFrameAttached = True
+        AddHandler CompositionTarget.Rendering, AddressOf AnimationFrame
+        If AnimationWatchdog Is Nothing Then
+            AnimationWatchdog = New DispatcherTimer(DispatcherPriority.Background) With {.Interval = TimeSpan.FromMilliseconds(100)}
+            AddHandler AnimationWatchdog.Tick, AddressOf AnimationWatchdogTick
+        End If
+        AnimationWatchdog.Start()
+    End Sub
+    Private Sub DetachAnimationFrames()
+        If Not AnimationFrameAttached Then Return
+        RemoveHandler CompositionTarget.Rendering, AddressOf AnimationFrame
+        AnimationFrameAttached = False
+        AnimationWatchdog?.Stop()
+    End Sub
+    Private Sub StopAnimationEngine(Sender As Object, Args As ExitEventArgs)
+        DetachAnimationFrames()
+        AniGroups.Clear()
+        AniRunning = False
+        If AnimationWatchdog IsNot Nothing Then
+            RemoveHandler AnimationWatchdog.Tick, AddressOf AnimationWatchdogTick
+            AnimationWatchdog = Nothing
+        End If
+        RemoveHandler Application.Current.Exit, AddressOf StopAnimationEngine
+    End Sub
+    Private Sub AnimationFrame(Sender As Object, Args As EventArgs)
+        Dim Frame = CType(Args, RenderingEventArgs)
+        If AnimationFrameBusy OrElse Frame.RenderingTime = AnimationRenderTime Then Return
+        AnimationRenderTime = Frame.RenderingTime
+        AdvanceAnimations()
+    End Sub
+    Private Sub AnimationWatchdogTick(Sender As Object, Args As EventArgs)
+        '窗口隐藏或最小化时可能没有绘制帧，仍需推进延迟回调和清理。
+        If GetTimeMs() - AniLastTick >= 100 Then AdvanceAnimations()
+    End Sub
+    Private Sub AdvanceAnimations()
+        If AnimationFrameBusy Then Return
+        AnimationFrameBusy = True
+        Try
+            Dim Now = GetTimeMs()
+            Dim DeltaTime = (Now - AniLastTick).Clamp(0, 100000)
+            AniLastTick = Now
+            AniCount = 0
+            AniTimer(DeltaTime * AniSpeed)
+            If ModeDebug Then
+                AniFPSCounter += 1
+                If Now - AniFPSTimer >= 500 Then
+                    AniFPS = CInt(AniFPSCounter * 1000.0 / (Now - AniFPSTimer))
+                    AniFPSCounter = 0 : AniFPSTimer = Now
+                End If
+            End If
+        Finally
+            AnimationFrameBusy = False
+            If AniGroups.Count = 0 Then DetachAnimationFrames()
+        End Try
     End Sub
 
     ''' <summary>
@@ -855,25 +897,27 @@ Sleeper:
     ''' </summary>
     Public Sub AniTimer(DeltaTick As Double)
         Try
-            If DeltaTick / AniSpeed > 100 Then Logger.Info($"两个动画帧间隔 {DeltaTick} ms")
-            Dim i As Integer = -1
-            '循环每个动画组
-            Do While i + 1 < AniGroups.Count
-                i += 1
-                '初始化
-                Dim Entry As AniGroupEntry = AniGroups.Values(i)
-                If Entry.StartTick > AniLastTick Then Continue Do '跳过本刻之后开始的动画
+            Dim Speed = AniSpeed
+            If DeltaTick / Speed > 100 Then Logger.Info($"两个动画帧间隔 {DeltaTick} ms")
+            '按帧快照遍历，避免字典按下标反复枚举，也允许回调取消或替换动画组。
+            For Each Pair In AniGroups.ToArray()
+                Dim Entry = Pair.Value, CurrentEntry As AniGroupEntry = Nothing
+                If Not AniGroups.TryGetValue(Pair.Key, CurrentEntry) OrElse Not Object.ReferenceEquals(Entry, CurrentEntry) Then Continue For
+                If Entry.StartTick > AniLastTick Then Continue For '跳过本刻之后开始的动画
+                Dim GroupDelta = (AniLastTick - Entry.LastTick).Clamp(0, 100000) * Speed
+                Entry.LastTick = AniLastTick
                 Dim CanRemoveAfter = True '是否应该去除“之后”标记
                 Dim ii = 0
 
                 '循环每个动画
                 Do While ii < Entry.Data.Count
+                    If Not AniGroups.TryGetValue(Pair.Key, CurrentEntry) OrElse Not Object.ReferenceEquals(Entry, CurrentEntry) Then Exit Do
                     Dim Anim As AniData = Entry.Data(ii)
                     '执行种类
                     If Anim.IsAfter = False Then '之前
                         CanRemoveAfter = False '取消“之后”标记 
                         '增加执行时间
-                        Anim.TimeFinished += DeltaTick
+                        Anim.TimeFinished += GroupDelta
                         '执行动画
                         If Anim.TimeFinished > 0 Then
                             Anim = AniRun(Anim)
@@ -907,17 +951,9 @@ NextAni:
 
                 '如果当前动画组都执行完毕则删除
                 If Not Entry.Data.Any() Then
-                    '为了避免新添加的动画影响顺序，不能 RemoveAt(i)
-                    '为了允许动画在执行中添加同名动画组，不能按名字移除
-                    For Current = 0 To AniGroups.Count - 1
-                        If AniGroups.ElementAt(Current).Value.Uuid = Entry.Uuid Then
-                            AniGroups.Remove(AniGroups.ElementAt(Current).Key)
-                            Exit For
-                        End If
-                    Next
-                    i -= 1
+                    If AniGroups.TryGetValue(Pair.Key, CurrentEntry) AndAlso Object.ReferenceEquals(Entry, CurrentEntry) Then AniGroups.Remove(Pair.Key)
                 End If
-            Loop
+            Next
 
         Catch ex As Exception
             Logger.Error(ex, "动画刻执行失败", LogBehavior.Toast)

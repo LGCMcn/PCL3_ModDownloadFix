@@ -251,6 +251,7 @@
     <Compile Include="Controls\MyScrollBar.vb" />
     <Compile Include="Controls\MyScrollViewer.vb" />
     <Compile Include="Controls\MyNavigationIndicator.vb" />
+    <Compile Include="Controls\MyPageMotion.vb" />
     <Compile Include="Controls\MySearchBox.xaml.vb">
       <DependentUpon>MySearchBox.xaml</DependentUpon>
     </Compile>
@@ -271,7 +272,9 @@
     <Compile Include="Modules\ModProjectUpdate.vb" />
     <Compile Include="Modules\ModVisualExperience.vb" />
     <Compile Include="Modules\ModNavigation.vb" />
+    <Compile Include="Modules\ModUiDiagnostics.vb" />
     <Compile Include="Modules\ModWindowMotion.vb" />
+    <Compile Include="Modules\ModWindowSnapshot.vb" />
     <Compile Include="Modules\ModTaskbarTarget.vb" />
     <Compile Include="Modules\ModDeviceInfo.vb" />
     <Compile Include="Controls\MyOfflineMorphIcon.vb" />

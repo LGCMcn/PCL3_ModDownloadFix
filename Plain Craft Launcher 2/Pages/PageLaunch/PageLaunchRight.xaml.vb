@@ -3,7 +3,7 @@ Imports System.Windows.Threading
 Public Class PageLaunchRight
     Implements IRefreshable, IDispatcherUnhandledException
 
-    Private Sub Init() Handles Me.Loaded
+    Private Sub Init() Handles Me.Loaded, Me.NavigationActivated
         PanBack.ScrollToHome()
         PanLog.Visibility = ModeDebug.ToVisibility
         '快照版提示
@@ -17,7 +17,7 @@ Public Class PageLaunchRight
     ''' <summary>
     ''' 刷新主页。
     ''' </summary>
-    Private Sub Refresh() Handles Me.Loaded
+    Private Sub Refresh() Handles Me.Loaded, Me.NavigationActivated
         RunInThread(
         Sub()
             Try

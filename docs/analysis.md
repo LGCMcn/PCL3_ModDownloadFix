@@ -2,6 +2,10 @@
 
 记录日期：2026-10-20（Asia/Shanghai）。
 
+## v1.2.4 发布补充（2026-10-22）
+
+**[ ? ] 顶部胶囊和页面反复切换仍有明显卡顿或响应延迟；候选 7 实际体验仍未通过流畅度验收。** 本次先发布当前功能，暂停性能修复，后续再处理。实现与测量边界见 [界面性能记录](https://github.com/LGCMcn/PCL3_ModDownloadFix/blob/main/docs/ui-performance.md)，更新条目见 [发行说明](https://github.com/LGCMcn/PCL3_ModDownloadFix/blob/main/docs/releases/v1.2.4.md)。下面保留早期分析与当时的验证记录，不作为 v1.2.4 的完整验收结论。
+
 ## 来源与快照
 
 仓库：https://github.com/LGCMcn/PCL3_ModDownloadFix

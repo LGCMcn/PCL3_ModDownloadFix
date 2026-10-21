@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import zipfile
 
-VERSION = '1.2.3'
+VERSION = '1.2.4'
 EXECUTABLE = 'Plain Craft Launcher (PCL) LGCMcn 下载修复版.exe'
 
 def sha(path):
@@ -43,7 +43,8 @@ def main():
         (portable/title).write_text((repo/'docs'/document).read_text(encoding='utf-8').replace(old,new), encoding='utf-8')
     (portable/'组件').mkdir(exist_ok=True)
     shutil.copy2(args.component, portable/'组件/easytier-windows-x86_64-v2.6.4.zip')
-    save(portable/'PCL.Release.json', dict(version=VERSION, tag='v'+VERSION, source_commit=commit,
+    save(portable/'PCL.Release.json', dict(version=VERSION, file_version='1.2.4.7', tag='v'+VERSION, source_commit=commit,
+        known_issues=['ui_navigation_stutter', 'microsoft_owner_authorization_required', 'curseforge_key_required'],
         upstream_source_version='2.99.0.0', repository='LGCMcn/PCL3_ModDownloadFix', third_party=True,
         official_release=False, windows_theme='blue', microsoft_app_authorization='owner_application_required'))
     save(portable/'SHA256SUMS.json', {p.relative_to(portable).as_posix():sha(p) for p in sorted(portable.rglob('*')) if p.is_file() and p.name!='SHA256SUMS.json'})
@@ -72,50 +73,10 @@ def main():
     name = 'v'+VERSION+' · Plain Craft Launcher (PCL) LGCMcn 下载修复版（第三方）'
     save(directory/'manifest.json', dict(tag='v'+VERSION, version=VERSION, name=name, commit=commit,
         assets=[dict(name=n,size=(directory/n).stat().st_size,sha256=sha(directory/n)) for n in names+['SHA256SUMS.txt']]))
-    (directory/'release-notes.md').write_text(f'''# v{VERSION} · 第三方下载修复版
-
-> 原项目作者仍为 **PCL 官方（龙腾猫跃及原项目贡献者）**。本版本由 LGCMcn 基于公开源码独立修改，第三方修改与原作者无关，**不代表 PCL 官方发布**。保留原 LICENCE、署名、原作者赞助链接和正版购买劝导。
-
-## 版本信息
-
-| 字段 | 内容 |
-| --- | --- |
-| 第三方版本 | v{VERSION} |
-| 上游源码版本 | 2.99.0.0 |
-| 源码提交 | `{commit}` |
-| 平台 | Windows x64 / .NET Framework 4.8 |
-| Windows 主色 | 固定蓝色 |
-| 本地验证 | 226 项检查通过；含真实下载、窗口动画、来源查询与更新恢复测试 |
-
-## 更新内容
-
-- [ - ] 修复页面加载、布局和数据刷新打断顶部胶囊动画的问题；胶囊改用独立 WPF 绘制 Dispatcher。
-- [ + ] 顶部文字和图标随胶囊覆盖区域显为蓝色，减少提前变色与跳闪。
-- [ - ] 重复布局通知不再重启或提前结束同一段移动；连续点击保留最新目标。
-- [ + ] 顶部按钮支持标准辅助操作入口，并公开真实前台顶栏画面采样工具源码。
-- [ - ] 绘制组件卸载后关闭线程、释放视觉目标及动画时钟；独立绘制不可用时使用静态选中样式。
-- [ + ] 保留 v1.2.2 的任务栏按钮定位、最小化收拢、关闭淡出、平滑滚动、项目更新与账号／下载功能；各动效开关继续可用。
-
-## 下载
-
-- `PCL.DownloadFix.Windows-x64.zip`：完整解压，运行其中的 EXE；保留配置和“组件”文件夹。
-- `PCL.DownloadFix.Source.zip`：完整源码，包含固定来源依赖，可按 README 构建。
-- `SHA256SUMS.txt`：核对同名文件；`THIRD_PARTY_NOTICE.md`：第三方声明。
-
-升级时保留个人 JSON 配置、游戏目录和账号数据。旧版换色设置会回到蓝色。
-
-## 需要维护者完成
-
-**尚未取得本项目的 Microsoft Client ID／Minecraft API 授权，真实账号登录未验收。** 维护者完成申请后填写项目级配置，用户再在微软网页登录。不借用其他启动器的身份，不绕过正版认证。CurseForge Key 同样需要维护者申请审核。申请步骤和可填写的项目介绍见 [使用说明](https://github.com/LGCMcn/PCL3_ModDownloadFix/blob/main/docs/usage.md)。
-
-Modrinth、公开 GitHub 目录和 FTB 目录无需 Key。完整游戏启动、全部加载器及跨电脑公网联机仍有未验收范围。
-
-## 安全与源码检查
-
-维护者 LGCMcn 承诺不主动植入病毒、木马、挖矿、盗号或隐蔽后门，源码公开接受检查。维护者表态：“藏毒作者迪克爆炸。”承诺不等于对第三方 Mod、依赖或任意运行环境的绝对安全担保。哈希用于核对文件，不能代替代码审查和安全检测。
-
-[技术实现与计算](https://github.com/LGCMcn/PCL3_ModDownloadFix/blob/main/docs/analysis.md) · [许可](https://github.com/LGCMcn/PCL3_ModDownloadFix/blob/main/LICENCE) · [NAS 备用下载](https://ug.link/lgcm/filemgr/share-download/?id=3fb99fd396a54ed0835d5300e18540ce)（由维护者手动同步，请核对版本和 SHA256）
-''', encoding='utf-8')
+    notes = (repo/'docs/releases'/('v'+VERSION+'.md')).read_text(encoding='utf-8')
+    assert '[ ? ]' in notes and '尚未解决' in notes, 'Known issues must remain explicit'
+    notes = notes.replace('<!-- source-commit -->', '| 源码提交 | `'+commit+'` |')
+    (directory/'release-notes.md').write_text(notes, encoding='utf-8')
     print(json.dumps(dict(directory=str(directory),version=VERSION,commit=commit,source_files=source_file_count),ensure_ascii=True))
 
 if __name__ == '__main__':
